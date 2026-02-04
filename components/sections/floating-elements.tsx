@@ -4,9 +4,10 @@ import { MapPin, Users, Bell, Calendar, QrCode, BarChart3, Ticket } from "lucide
 
 export function FloatingElements() {
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-      {/* Top Left: Ticket Stub */}
-      <div className="absolute top-20 left-8 md:left-16 transform-3d">
+    <div className="absolute inset-0 pointer-events-none">
+      
+      {/* LEFT — Ticket */}
+      <div className="absolute top-50 left-1/2 -translate-x-[calc(50%+22rem)]">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-xl float -rotate-6 w-64">
           <div className="flex items-center gap-2 mb-3">
             <Ticket className="w-5 h-5 text-accent" />
@@ -28,8 +29,8 @@ export function FloatingElements() {
         </div>
       </div>
 
-      {/* Bottom Left: Club Members */}
-      <div className="absolute bottom-20 left-8 md:left-16 transform-3d">
+      {/* LEFT — Members */}
+      <div className="absolute top-[420px] left-1/2 -translate-x-[calc(50%+20rem)]">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-xl float-delayed rotate-3 w-64">
           <div className="flex items-center gap-2 mb-3">
             <Users className="w-5 h-5 text-accent" />
@@ -49,8 +50,8 @@ export function FloatingElements() {
         </div>
       </div>
 
-      {/* Top Right: Analytics */}
-      <div className="absolute top-20 right-8 md:right-16 transform-3d">
+      {/* RIGHT — Analytics */}
+      <div className="absolute top-24 left-1/2 translate-x-[calc(50%+22rem)]">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-xl float-slow rotate-6 w-64">
           <div className="flex items-center gap-2 mb-3">
             <BarChart3 className="w-5 h-5 text-accent" />
@@ -71,8 +72,8 @@ export function FloatingElements() {
         </div>
       </div>
 
-      {/* Bottom Right: Location */}
-      <div className="absolute bottom-20 right-8 md:right-16 transform-3d">
+      {/* RIGHT — Location */}
+      <div className="absolute top-[420px] left-1/2 translate-x-[calc(50%+20rem)]">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-xl float -rotate-3 w-64">
           <div className="flex items-center gap-2 mb-3">
             <MapPin className="w-5 h-5 text-accent" />
@@ -86,7 +87,7 @@ export function FloatingElements() {
       </div>
 
       {/* Top Right QR Code */}
-      <div className="absolute top-32 right-16 transform-3d">
+      <div className="absolute top-32 left-1/2 translate-x-[calc(50%+16rem)]">
         <div className="glass-strong rounded-xl p-4 float shadow-lg rotate-12">
           <div className="w-32 h-32 bg-foreground rounded-lg flex items-center justify-center">
             <QrCode className="w-24 h-24 text-background" />
@@ -94,19 +95,21 @@ export function FloatingElements() {
         </div>
       </div>
 
-      {/* Small Floating Icons */}
-      <div className="absolute top-1/4 left-1/3">
-        <div className="glass rounded-full p-2 float opacity-60">
+      {/* Small floating accents */}
+      <div className="absolute top-1/3 left-1/4 opacity-60">
+        <div className="glass rounded-full p-2 float">
           <Bell className="w-4 h-4 text-muted-foreground" />
         </div>
       </div>
-      <div className="absolute bottom-1/3 right-1/4">
-        <div className="glass rounded-full p-2 float-delayed opacity-60">
+
+      <div className="absolute bottom-1/3 right-1/4 opacity-60">
+        <div className="glass rounded-full p-2 float-delayed">
           <Calendar className="w-4 h-4 text-muted-foreground" />
         </div>
       </div>
-      <div className="absolute top-2/3 left-1/4">
-        <div className="glass rounded-full p-3 float-slow opacity-50">
+
+      <div className="absolute top-2/3 left-1/4 opacity-50">
+        <div className="glass rounded-full p-3 float-slow">
           <div className="w-6 h-6 rounded-full bg-pastel-pink" />
         </div>
       </div>

@@ -1,0 +1,101 @@
+"use client";
+
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Circle } from "lucide-react";
+import Image from "next/image";
+
+interface EventCardProps {
+  id: string;
+  title: string;
+  image: string;
+  date: string;
+  time: string;
+  organizer: string;
+  isFree?: boolean;
+  price?: string;
+  eventType?: "Online" | "Offline";
+  attendees?: number;
+  attendeeAvatars?: string[];
+}
+
+export function EventCard({
+  title,
+  image,
+  date,
+  time,
+  organizer,
+  isFree = false,
+  price,
+  eventType = "Online",
+  attendees = 0,
+  attendeeAvatars = [],
+}: EventCardProps) {
+  return (
+    <Card className="p-0 group relative overflow-hidden bg-white/5 backdrop-blur-xl hover:bg-white/10 transition-all duration-300 cursor-pointer hover:scale-[1.02] w-full max-w-[320px] rounded-3xl border-0 shadow-none">
+      <CardContent className="p-0">
+        {/* Event Image */}
+        <div className="relative w-full h-[170px] overflow-hidden rounded-t-3xl group-hover:scale-95 transition-transform duration-300">
+          <Image
+            src={image}
+            alt={title}
+            fill
+            className="object-cover transition-transform duration-300 rounded-3xl"
+          />
+          {/* Free/Price Badge */}
+          {(isFree || price) && (
+            <Badge
+              variant="secondary"
+              className="absolute top-3 left-3 bg-white text-black font-semibold px-3 py-1 hover:bg-white rounded-full"
+            >
+              {isFree ? "Free" : price}
+            </Badge>
+          )}
+        </div>
+
+        {/* Event Details */}
+        <div className="p-4 space-y-2">
+          {/* Event Title */}
+          <h3 className="font-bold text-foreground text-[17px] line-clamp-2 leading-tight mb-1">
+            {title}
+          </h3>
+
+          {/* Date, Time and Event Type */}
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-0.5">
+            <span>{date} · {time}</span>
+            <span>·</span>
+            <Circle className="w-1.5 h-1.5 fill-current" />
+            <span className="font-medium">{eventType}</span>
+          </div>
+
+          {/* Organizer */}
+          <p className="text-xs text-muted-foreground line-clamp-1 mb-0.5">
+            by {organizer}
+          </p>
+
+          {/* Attendees */}
+          <div className="flex items-center gap-2 pt-1">
+            {/* Attendee Avatars */}
+            <div className="flex -space-x-2">
+              {attendeeAvatars.slice(0, 3).map((avatar, index) => (
+                <Avatar key={index} className="w-6 h-6 border-2 border-background">
+                  <AvatarImage src={avatar} alt={`Attendee ${index + 1}`} />
+                  <AvatarFallback className="text-xs bg-accent text-accent-foreground">
+                    {String.fromCharCode(65 + index)}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+            </div>
+            {/* Attendee Count */}
+            {attendees > 0 && (
+              <span className="text-xs text-muted-foreground font-medium">
+                {attendees} attendee{attendees !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

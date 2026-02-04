@@ -226,3 +226,20 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+@layer components {
+  .wrapper {
+    @apply mx-auto px-4;
+  }
+
+  .wrapper-wide {
+    @apply max-w-7xl;
+  }
+
+  .wrapper-narrow {
+    @apply max-w-4xl;
+  }
+
+  .wrapper-hero {
+    @apply relative max-w-5xl text-center;
+  }
+}
