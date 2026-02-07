@@ -72,10 +72,18 @@ export function HowItWorks() {
               const isSelected = selectedStep.id === step.id;
               
               return (
-                <button
+                <div
                   key={step.id}
                   onClick={() => setSelectedStep(step)}
-                  className={`w-full text-left p-6 rounded-2xl border-2 transition-all duration-500 overflow-hidden ${
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedStep(step);
+                    }
+                  }}
+                  className={`w-full text-left p-6 rounded-2xl border-2 transition-all duration-500 overflow-hidden cursor-pointer ${
                     isSelected
                       ? `border-white/30 bg-gradient-to-br ${step.gradient} shadow-lg`
                       : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
@@ -133,7 +141,7 @@ export function HowItWorks() {
                       </div>
                     )}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

@@ -2,6 +2,10 @@
 const nextConfig = {
   /* config options here */
   reactCompiler: true,
+  devIndicators: {
+    buildActivity: false,
+    buildActivityPosition: 'bottom-right',
+  },
 };
 
 export default nextConfig;
