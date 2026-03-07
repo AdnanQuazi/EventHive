@@ -1,5 +1,3 @@
-"use client"
-
 import { FloatingNavbar } from "@/components/layout/floating-navbar"
 import { HeroSection } from "@/components/sections/hero-section"
 import { FloatingElements } from "@/components/sections/floating-elements"
@@ -9,8 +7,12 @@ import { HowItWorks } from "@/components/sections/how-it-works"
 import { StatsSection } from "@/components/sections/stats-section"
 import { EventOrganizers } from "@/components/sections/event-organizers"
 import { Footer } from "@/components/sections/footer"
+import { getPublicEvents } from "@/lib/actions/events"
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // Fetch recent events from database
+  const eventsResult = await getPublicEvents({ limit: 8 });
+  const events = eventsResult.data || [];
   return (
     <main className="min-h-screen bg-gray-100 text-foreground font-sans relative overflow-hidden">
 {/* 2. Ambient Glows */}
@@ -19,7 +21,7 @@ export default function LandingPage() {
 <div className="absolute bottom-[-10%] left-[20%] w-[400px] h-[400px] bg-blue-900/20 rounded-full blur-[100px] pointer-events-none" />
       <FloatingNavbar />
       <HeroSection />
-      <TrendingEvents />
+      <TrendingEvents events={events} />
       <EventCategories />
       <HowItWorks />
       <EventOrganizers />

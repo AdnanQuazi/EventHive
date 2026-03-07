@@ -3,67 +3,19 @@
 import { EventCard } from "./event-card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-
-// Mock data - replace with real data from your API
-const trendingEvents = [
-  {
-    id: "1",
-    title: "Bitcoin Kernel Club",
-    image: "/temp.jpg",
-    date: "Thu, Jan 29",
-    time: "7:00 PM IST",
-    organizer: "Bitshala",
-    isFree: true,
-    eventType: "Online" as const,
-    attendees: 4,
-    attendeeAvatars: ["/avatar1.jpg", "/avatar2.jpg"],
-  },
-  {
-    id: "2",
-    title: "Let Us Connect: Online Space for Sharing and Understanding...",
-    image: "/temp.jpg",
-    date: "Thu, Jan 29",
-    time: "7:00 PM IST",
-    organizer: "Social Anxiety Support Group",
-    isFree: true,
-    eventType: "Online" as const,
-    attendees: 23,
-    attendeeAvatars: ["/avatar1.jpg", "/avatar2.jpg", "/avatar3.jpg"],
-  },
-  {
-    id: "3",
-    title: "AWS Certified Machine Learning Engineer Associate (MLA-C01) ...",
-    image: "/temp.jpg",
-    date: "Thu, Jan 29",
-    time: "8:00 PM IST",
-    organizer: "DataOps Labs India",
-    isFree: true,
-    eventType: "Online" as const,
-    attendees: 39,
-    attendeeAvatars: ["/avatar1.jpg", "/avatar2.jpg", "/avatar3.jpg"],
-  },
-  {
-    id: "4",
-    title: "The Engineered Excellence",
-    image: "/temp.jpg",
-    date: "Thu, Jan 29",
-    time: "8:00 PM IST",
-    organizer: "Excellence Engineered - Hyderabad Me...",
-    isFree: true,
-    eventType: "Online" as const,
-    attendees: 11,
-    attendeeAvatars: ["/avatar1.jpg", "/avatar2.jpg", "/avatar3.jpg"],
-  },
-];
+import { format } from "date-fns";
+import type { Event } from "@/lib/actions/events";
 
 interface TrendingEventsProps {
   title?: string;
   subtitle?: string;
+  events: Event[];
 }
 
 export function TrendingEvents({
   title = "Trending Events",
   subtitle,
+  events,
 }: TrendingEventsProps) {
   return (
     <section className="relative px-4 py-16 pb-0 wrapper">
@@ -89,8 +41,21 @@ export function TrendingEvents({
 
         {/* Events Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {trendingEvents.map((event) => (
-            <EventCard key={event.id} {...event} />
+          {events.map((event) => (
+            <EventCard
+              key={event.id}
+              id={event.id}
+              title={event.title}
+              image={event.main_image_url || ""}
+              date={format(new Date(event.start_date), "MMM dd, yyyy")}
+              time={format(new Date(event.start_date), "h:mm a")}
+              organizer="Organizer"
+              isFree={true}
+              eventType={event.event_type === "online" ? "Online" : "Offline"}
+              category={event.category || undefined}
+              attendees={event.attendees?.length || 0}
+              attendeeAvatars={[]}
+            />
           ))}
         </div>
       </div>
