@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, LogOut, User as UserIcon } from "lucide-react";
+import { Search, LogOut, User as UserIcon, Calendar, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ import type { User } from "@supabase/supabase-js";
 export function FloatingNavbar() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const supabase = createClient();
 
@@ -48,6 +49,18 @@ export function FloatingNavbar() {
       setUser(null); // Update local state immediately
       router.push("/"); // Navigate to home
       router.refresh(); // Refresh to update server components
+    }
+  };
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
     }
   };
 
@@ -98,6 +111,9 @@ export function FloatingNavbar() {
               <Input
                 type="text"
                 placeholder="Search events..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 className="flex-1 border-0 bg-transparent focus-visible:bg-white focus-visible:ring-0 focus-visible:ring-offset-0 px-4 py-2 text-sm placeholder:text-muted-foreground rounded-full  transition-all"
                 style={{
                   boxShadow: "none",
@@ -116,6 +132,7 @@ export function FloatingNavbar() {
               /> */}
               <Button
                 size="icon"
+                onClick={handleSearch}
                 className="h-10 w-10 rounded-full bg-accent hover:bg-accent/90 shrink-0"
               >
                 <Search className="h-4 w-4 text-background" />
@@ -132,12 +149,14 @@ export function FloatingNavbar() {
           >
             Home
           </Link>
-          <Link 
-            href="/post-event" 
-            className="text-sm font-medium hover:text-accent transition-colors hidden md:block"
-          >
-            Post Event
-          </Link>
+          {user && (
+            <Link 
+              href="/events/create" 
+              className="text-sm font-medium hover:text-accent transition-colors hidden md:block"
+            >
+              Post Event
+            </Link>
+          )}
           
           {!loading && (
             user ? (
@@ -155,7 +174,7 @@ export function FloatingNavbar() {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-card border-border shadow-lg" align="end" forceMount>
+                <DropdownMenuContent className="w-56 bg-background border-border shadow-lg" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
@@ -171,6 +190,18 @@ export function FloatingNavbar() {
                     <Link href="/profile" className="cursor-pointer">
                       <UserIcon className="mr-2 h-4 w-4" />
                       <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/events/create" className="cursor-pointer">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      <span>Create Event</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/clubs/create" className="cursor-pointer">
+                      <Users className="mr-2 h-4 w-4" />
+                      <span>Create Club</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

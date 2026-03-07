@@ -6,9 +6,18 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
+  // Verify environment variables are loaded
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Missing Supabase environment variables')
+    return supabaseResponse
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -33,16 +42,36 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  // Protect routes that require authentication
-  // Add more protected routes as needed
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/sign-in'
-    return NextResponse.redirect(url)
+    // Protect routes that require authentication
+    const protectedPaths = ['/dashboard', '/profile', '/events/create', '/clubs/create']
+    const isProtectedPath = protectedPaths.some(path => 
+      request.nextUrl.pathname.startsWith(path)
+    )
+
+    if (!user && isProtectedPath) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/sign-in'
+      return NextResponse.redirect(url)
+    }
+  } catch (error) {
+    // If Supabase is unreachable or there's a fetch error, log it and continue
+    console.error('Middleware auth error:', error)
+    // For protected paths, redirect to sign-in on error
+    const protectedPaths = ['/dashboard', '/profile', '/events/create', '/clubs/create']
+    const isProtectedPath = protectedPaths.some(path => 
+      request.nextUrl.pathname.startsWith(path)
+    )
+    
+    if (isProtectedPath) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/sign-in'
+      return NextResponse.redirect(url)
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're

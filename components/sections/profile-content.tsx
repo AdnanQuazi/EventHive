@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EventCard } from "@/components/sections/event-card";
+import { RegistrationQRCard } from "@/components/sections/registration-qr-card";
 import {
   Select,
   SelectContent,
@@ -33,14 +34,20 @@ import {
   Star,
 } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import type { Event } from "@/lib/actions/events";
+import type { Club } from "@/lib/actions/clubs";
+import { format } from "date-fns";
 
 interface ProfileContentProps {
   user: User;
+  events: Event[];
+  clubs: Club[];
+  registrations: any[];
 }
 
-export function ProfileContent({ user }: ProfileContentProps) {
+export function ProfileContent({ user, events, clubs, registrations }: ProfileContentProps) {
   const [filter, setFilter] = useState<"all" | "organizing" | "participating">("all");
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(true);
   const [isPastOpen, setIsPastOpen] = useState(false);
@@ -67,171 +74,89 @@ export function ProfileContent({ user }: ProfileContentProps) {
     return user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
   };
 
-  // Placeholder data
-  const stats = {
-    eventsHosted: 12,
-    eventsAttended: 35,
-    clubsOwned: 2,
-    clubsJoined: 5,
-  };
+  // Process events - separate into upcoming and past
+  const now = new Date();
+  const { upcomingEvents, historyEvents } = useMemo(() => {
+    const upcoming = events.filter(event => new Date(event.start_date) >= now);
+    const past = events.filter(event => new Date(event.start_date) < now);
+    
+    return {
+      upcomingEvents: upcoming.map(event => ({
+        id: event.id,
+        title: event.title,
+        image: event.main_image_url,
+        date: format(new Date(event.start_date), "MMM dd, yyyy"),
+        time: format(new Date(event.start_date), "h:mm a"),
+        organizer: user.user_metadata?.name || "You",
+        isFree: true, // You can add pricing logic later
+        price: undefined,
+        eventType: event.event_type === "online" ? "Online" as const : "Offline" as const,
+        category: event.category,
+        attendees: event.attendees?.length || 0,
+        attendeeAvatars: [],
+        role: event.owner_id === user.id ? "organizing" as const : "participating" as const,
+      })),
+      historyEvents: past.map(event => ({
+        id: event.id,
+        title: event.title,
+        image: event.main_image_url,
+        date: format(new Date(event.start_date), "MMM dd, yyyy"),
+        time: format(new Date(event.start_date), "h:mm a"),
+        organizer: user.user_metadata?.name || "You",
+        isFree: true,
+        price: undefined,
+        eventType: event.event_type === "online" ? "Online" as const : "Offline" as const,
+        category: event.category,
+        attendees: event.attendees?.length || 0,
+        attendeeAvatars: [],
+        role: event.owner_id === user.id ? "organizing" as const : "participating" as const,
+      })),
+    };
+  }, [events, user]);
 
-  const upcomingEvents = [
-    {
-      id: "1",
-      title: "Tech Conference 2026",
-      image: "/temp.jpg",
-      date: "Feb 15, 2026",
-      time: "10:00 AM",
-      organizer: "Tech Community SF",
-      isFree: false,
-      price: "$49",
-      eventType: "Offline" as const,
-      attendees: 234,
-      attendeeAvatars: ["/temp.jpg", "/temp.jpg", "/temp.jpg"],
-      role: "organizing",
-    },
-    {
-      id: "2",
-      title: "Design Workshop: Modern UI/UX Principles",
-      image: "/temp.jpg",
-      date: "Feb 20, 2026",
-      time: "2:00 PM",
-      organizer: "Design Masters NYC",
-      isFree: true,
-      eventType: "Online" as const,
-      attendees: 45,
-      attendeeAvatars: ["/temp.jpg", "/temp.jpg"],
-      role: "participating",
-    },
-    {
-      id: "3",
-      title: "React Meetup",
-      image: "/temp.jpg",
-      date: "Feb 25, 2026",
-      time: "6:00 PM",
-      organizer: "JavaScript Developers",
-      isFree: false,
-      price: "$15",
-      eventType: "Offline" as const,
-      attendees: 89,
-      attendeeAvatars: ["/temp.jpg", "/temp.jpg", "/temp.jpg"],
-      role: "organizing",
-    },
-    {
-      id: "6",
-      title: "AI & Machine Learning Summit",
-      image: "/temp.jpg",
-      date: "Mar 5, 2026",
-      time: "9:00 AM",
-      organizer: "AI Enthusiasts",
-      isFree: false,
-      price: "$99",
-      eventType: "Online" as const,
-      attendees: 567,
-      attendeeAvatars: ["/temp.jpg", "/temp.jpg", "/temp.jpg"],
-      role: "participating",
-    },
-  ];
+  // Separate clubs into owned and member clubs
+  const { ownedClubs, joinedClubs } = useMemo(() => {
+    const owned = clubs.filter(club => club.owner_id === user.id);
+    const joined = clubs.filter(club => club.owner_id !== user.id);
+    
+    return {
+      ownedClubs: owned.map(club => ({
+        id: club.id,
+        name: club.name,
+        description: club.description || "",
+        members: 0, // Can be enhanced with member count query
+        image: club.image_url || "/temp.jpg",
+        location: "Location", // Can be added to schema later
+        rating: club.rating || 0,
+        upcomingEvents: 0, // Can be enhanced with event count query
+      })),
+      joinedClubs: joined.map(club => ({
+        id: club.id,
+        name: club.name,
+        description: club.description || "",
+        members: 0,
+        image: club.image_url || "/temp.jpg",
+        location: "Location",
+        rating: club.rating || 0,
+        upcomingEvents: 0,
+      })),
+    };
+  }, [clubs, user.id]);
 
-  const historyEvents = [
-    {
-      id: "4",
-      title: "Web Dev Bootcamp",
-      image: "/temp.jpg",
-      date: "Jan 10, 2026",
-      time: "9:00 AM",
-      organizer: "Code Academy",
-      isFree: false,
-      price: "$199",
-      eventType: "Online" as const,
-      attendees: 120,
-      attendeeAvatars: ["/temp.jpg", "/temp.jpg", "/temp.jpg"],
-      role: "participating",
-    },
-    {
-      id: "5",
-      title: "Marketing Summit 2025",
-      image: "/temp.jpg",
-      date: "Dec 15, 2025",
-      time: "1:00 PM",
-      organizer: "Marketing Pros",
-      isFree: true,
-      eventType: "Offline" as const,
-      attendees: 300,
-      attendeeAvatars: ["/temp.jpg", "/temp.jpg", "/temp.jpg"],
-      role: "organizing",
-    },
-    {
-      id: "7",
-      title: "Startup Pitch Night",
-      image: "/temp.jpg",
-      date: "Nov 20, 2025",
-      time: "7:00 PM",
-      organizer: "Startup Founders",
-      isFree: false,
-      price: "$25",
-      eventType: "Offline" as const,
-      attendees: 85,
-      attendeeAvatars: ["/temp.jpg", "/temp.jpg"],
-      role: "organizing",
-    },
-  ];
-
-  const ownedClubs = [
-    {
-      id: "1",
-      name: "JavaScript Developers",
-      description: "Welcome to JavaScript Developers! Connect with fellow developers, share knowledge, and build amazing projects together.",
-      members: 1234,
-      image: "/temp.jpg",
-      location: "San Francisco",
-      rating: 4.8,
-      upcomingEvents: 3,
-    },
-    {
-      id: "2",
-      name: "Design Masters",
-      description: "A community for designers to collaborate, learn modern design principles, and create stunning user experiences.",
-      members: 890,
-      image: "/temp.jpg",
-      location: "New York",
-      rating: 4.6,
-      upcomingEvents: 1,
-    },
-  ];
-
-  const joinedClubs = [
-    {
-      id: "3",
-      name: "Startup Founders",
-      description: "Join a network of ambitious entrepreneurs building the next generation of innovative startups and businesses.",
-      members: 567,
-      image: "/temp.jpg",
-      location: "Austin",
-      rating: 4.9,
-      upcomingEvents: 2,
-    },
-    {
-      id: "4",
-      name: "Product Managers",
-      description: "Connect with product leaders, share best practices, and master the art of building products people love.",
-      members: 432,
-      image: "/temp.jpg",
-      location: "Seattle",
-      rating: 4.5,
-      upcomingEvents: 0,
-    },
-    {
-      id: "5",
-      name: "AI Enthusiasts",
-      description: "Explore the future of artificial intelligence and machine learning with a passionate community of innovators.",
-      members: 789,
-      image: "/temp.jpg",
-      location: "Los Angeles",
-      rating: 4.7,
-      upcomingEvents: 5,
-    },
-  ];
+  // Calculate stats from real data
+  const stats = useMemo(() => {
+    const hosted = events.filter(e => e.owner_id === user.id).length;
+    const attended = events.reduce((sum, e) => {
+      return sum + (e.attendees?.includes(user.id) ? 1 : 0);
+    }, 0);
+    
+    return {
+      eventsHosted: hosted,
+      eventsAttended: attended,
+      clubsOwned: ownedClubs.length,
+      clubsJoined: joinedClubs.length,
+    };
+  }, [events, ownedClubs, joinedClubs, user.id]);
 
   return (
     <main className="min-h-screen bg-gray-100 text-foreground font-sans relative overflow-hidden">
@@ -412,6 +337,29 @@ export function ProfileContent({ user }: ProfileContentProps) {
               </Collapsible>
             </CardContent>
           </Card>
+
+          {/* MY EVENT TICKETS / QR CODES */}
+          {registrations && registrations.length > 0 && (
+            <Card className="bg-white/5 backdrop-blur-xl border-0 rounded-3xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="mb-6">
+                  <h3 className="text-2xl font-bold text-foreground mb-2">My Event Tickets</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Show these QR codes at event entrances for check-in
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {registrations.map((registration) => (
+                    <RegistrationQRCard
+                      key={registration.id}
+                      registration={registration}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           </div>
           {/* End Right Content Area */}
