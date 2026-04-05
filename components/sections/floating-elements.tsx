@@ -2,6 +2,8 @@
 
 import { MapPin, Users, Bell, Calendar, QrCode, BarChart3, Ticket } from "lucide-react"
 
+const ANALYTICS_BAR_HEIGHTS = [46, 58, 71, 63, 55, 68]
+
 export function FloatingElements() {
   return (
     <div className="absolute inset-0 pointer-events-none">
@@ -58,12 +60,12 @@ export function FloatingElements() {
             <h3 className="text-sm font-semibold text-foreground">Analytics</h3>
           </div>
           <div className="h-24 bg-gradient-to-br from-accent/20 to-pastel-blue/20 rounded-lg flex items-end justify-between p-2 gap-1">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {ANALYTICS_BAR_HEIGHTS.map((height, i) => (
               <div
                 key={i}
                 className="flex-1 bg-accent rounded-t"
                 style={{
-                  height: `${30 + Math.random() * 60}%`,
+                  height: `${height}%`,
                 }}
               />
             ))}

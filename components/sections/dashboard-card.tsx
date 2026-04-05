@@ -3,6 +3,9 @@
 import { Button } from "@/components/ui/button"
 import { TrendingUp, ArrowRight } from "lucide-react"
 
+const CHART_BAR_HEIGHTS = [42, 58, 65, 73, 61, 54, 68]
+const TRANSACTION_AMOUNTS = [28.99, 74.5, 112.35]
+
 export function DashboardCard() {
   return (
     <div className="glass-strong rounded-2xl p-6 transform rotate-12 float shadow-xl w-96 max-w-full">
@@ -23,12 +26,12 @@ export function DashboardCard() {
 
         {/* Chart Placeholder */}
         <div className="h-24 bg-gradient-to-br from-accent/20 to-pastel-blue/20 rounded-lg flex items-end justify-between p-3 gap-1">
-          {Array.from({ length: 7 }).map((_, i) => (
+          {CHART_BAR_HEIGHTS.map((height, i) => (
             <div
               key={i}
               className="flex-1 bg-accent rounded-t"
               style={{
-                height: `${30 + Math.random() * 60}%`,
+                height: `${height}%`,
               }}
             />
           ))}
@@ -42,7 +45,7 @@ export function DashboardCard() {
               <div key={i} className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{name}</span>
                 <span className="font-medium text-foreground">
-                  ${(Math.random() * 100 + 10).toFixed(2)}
+                  ${TRANSACTION_AMOUNTS[i].toFixed(2)}
                 </span>
               </div>
             ))}
@@ -56,7 +59,7 @@ export function DashboardCard() {
             <p className="text-xs text-muted-foreground">and receive $50</p>
           </div>
           <div className="glass rounded-lg p-3 space-y-2">
-            <p className="text-xs font-semibold text-foreground">It's time to pay</p>
+            <p className="text-xs font-semibold text-foreground">It&apos;s time to pay</p>
             <p className="text-xs text-muted-foreground mb-2">your rent $2,000.00</p>
             <Button 
               size="sm"

@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import {
   Calendar,
   Clock,
+  Edit,
   MapPin,
   Users,
   Share2,
@@ -37,6 +38,7 @@ interface EventDetailContentProps {
   ownerAvatar: string | null;
   currentUserId: string;
   isHost: boolean;
+  canEdit: boolean;
   isRegistered: boolean;
   attendeeDetails: Record<string, { name: string; avatar: string | null }>;
 }
@@ -48,6 +50,7 @@ export function EventDetailContent({
   ownerAvatar,
   currentUserId,
   isHost: initialIsHost,
+  canEdit,
   isRegistered: initialIsRegistered,
   attendeeDetails,
 }: EventDetailContentProps) {
@@ -108,9 +111,22 @@ export function EventDetailContent({
         <div className="lg:col-span-2 space-y-6">
         {/* Event Title */}
         <div className="mb-15">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
-            {event.title}
-          </h1>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+              {event.title}
+            </h1>
+            {canEdit && (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full shrink-0"
+                onClick={() => router.push(`/events/${event.id}/edit`)}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Event
+              </Button>
+            )}
+          </div>
 
           {/* Category Badge */}
           {event.category && (
@@ -136,7 +152,7 @@ export function EventDetailContent({
 
           {/* Club Info */}
           {club && (
-            <Card className="bg-transparent rounded-2xl p-4 cursor-pointer max-w-lg shadow-none border-0 p-0">
+            <Card className="bg-transparent rounded-2xl cursor-pointer max-w-lg shadow-none border-0 p-0">
               <div className="flex items-center gap-4">
                 {club.image_url ? (
                   <div className="relative w-25 h-15 rounded-2xl overflow-hidden shrink-0">
@@ -205,7 +221,7 @@ export function EventDetailContent({
         </Card>
 
         {/* Attendees Section */}
-        <Card className="bg-white/5 backdrop-blur-xl border-0 rounded-3xl p-0 bg-transparent shadow-none gap-0">
+        <Card className="bg-transparent backdrop-blur-xl border-0 rounded-3xl p-0 shadow-none gap-0">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold flex items-center gap-2">
               Attendees
@@ -277,7 +293,7 @@ export function EventDetailContent({
         </Card>
 
         {/* Gallery */}
-        <Card className="bg-white/5 backdrop-blur-xl border-0 rounded-3xl bg-transparent shadow-none gap-0">
+        <Card className="bg-transparent backdrop-blur-xl border-0 rounded-3xl shadow-none gap-0">
           <h3 className="font-semibold text-2xl mb-4">Photos</h3>
           <div className="relative group">
             {/* Photos Slider */}

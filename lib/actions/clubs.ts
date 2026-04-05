@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/types/database";
 
@@ -13,6 +14,15 @@ export type ClubRole = "Owner" | "Admin" | "Manager";
 type ActionResult<T> = {
   data: T | null;
   error: string | null;
+};
+
+export type ClubMemberProfile = {
+  user_id: string;
+  email: string | null;
+  name: string;
+  avatar_url: string | null;
+  role: ClubRole;
+  joined_at: string;
 };
 
 /**
@@ -265,10 +275,39 @@ export async function getUserClubs(): Promise<ActionResult<Club[]>> {
       return { data: ownedClubs || [], error: null };
     }
 
-    // Combine and deduplicate
+    // Combine clubs
     const allClubs = [...(ownedClubs || []), ...(memberClubs || [])];
 
-    return { data: allClubs, error: null };
+    if (allClubs.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Fetch member counts for all clubs shown on profile
+    const clubIds = allClubs.map((club) => club.id);
+    const { data: membershipRows, error: membershipError } = await supabase
+      .from("club_members")
+      .select("club_id")
+      .in("club_id", clubIds);
+
+    if (membershipError) {
+      console.error("Get club member counts error:", membershipError);
+      return { data: allClubs, error: null };
+    }
+
+    const memberCountByClub = (membershipRows || []).reduce<Record<string, number>>(
+      (acc, row) => {
+        acc[row.club_id] = (acc[row.club_id] || 0) + 1;
+        return acc;
+      },
+      {}
+    );
+
+    const clubsWithMemberCount = allClubs.map((club) => ({
+      ...club,
+      member_count: memberCountByClub[club.id] || 0,
+    }));
+
+    return { data: clubsWithMemberCount as Club[], error: null };
   } catch (error) {
     console.error("Get user clubs error:", error);
     return {
@@ -362,10 +401,7 @@ export async function removeClubMember(
     }
 
     // Check if current user has permission (owner or admin)
-    const hasPermission = await checkClubPermission(clubId, user.id, [
-      "Owner",
-      "Admin",
-    ]);
+    const hasPermission = await checkClubPermission(clubId, user.id, ["Owner"]);
 
     if (!hasPermission) {
       return {
@@ -412,6 +448,72 @@ export async function removeClubMember(
 }
 
 /**
+ * Update a member's role in a club (owner only)
+ */
+export async function updateClubMemberRole(
+  clubId: string,
+  userId: string,
+  role: Exclude<ClubRole, "Owner">
+): Promise<ActionResult<ClubMember>> {
+  try {
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { data: null, error: "User not authenticated" };
+    }
+
+    const { data: club, error: clubError } = await supabase
+      .from("clubs")
+      .select("owner_id")
+      .eq("id", clubId)
+      .single();
+
+    if (clubError || !club) {
+      return { data: null, error: "Club not found" };
+    }
+
+    if (club.owner_id !== user.id) {
+      return { data: null, error: "Only the club owner can reassign roles" };
+    }
+
+    // Prevent changing the owner's mapped membership role
+    if (userId === club.owner_id) {
+      return { data: null, error: "Owner role cannot be reassigned" };
+    }
+
+    const { data, error } = await supabase
+      .from("club_members")
+      .update({ role })
+      .eq("club_id", clubId)
+      .eq("user_id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Update club member role error:", error);
+      return { data: null, error: error.message };
+    }
+
+    revalidatePath(`/clubs/${clubId}`);
+    revalidatePath("/profile");
+
+    return { data, error: null };
+  } catch (error) {
+    console.error("Update club member role error:", error);
+    return {
+      data: null,
+      error:
+        error instanceof Error ? error.message : "Failed to update member role",
+    };
+  }
+}
+
+/**
  * Get all members of a club
  */
 export async function getClubMembers(
@@ -438,6 +540,167 @@ export async function getClubMembers(
       data: null,
       error:
         error instanceof Error ? error.message : "Failed to fetch club members",
+    };
+  }
+}
+
+/**
+ * Get club members with auth profile details (owner/admin/manager only)
+ */
+export async function getClubMembersWithProfiles(
+  clubId: string
+): Promise<ActionResult<ClubMemberProfile[]>> {
+  try {
+    const supabase = await createClient();
+    const adminClient = createAdminClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { data: null, error: "User not authenticated" };
+    }
+
+    const hasPermission = await checkClubPermission(clubId, user.id, [
+      "Owner",
+      "Admin",
+      "Manager",
+    ]);
+
+    if (!hasPermission) {
+      return { data: null, error: "You don't have permission to view club members" };
+    }
+
+    const membersResult = await getClubMembers(clubId);
+    if (membersResult.error || !membersResult.data) {
+      return { data: null, error: membersResult.error || "Failed to fetch members" };
+    }
+
+    const members = membersResult.data;
+
+    const profileRows = await Promise.all(
+      members.map(async (member) => {
+        const { data: userData, error: profileError } =
+          await adminClient.auth.admin.getUserById(member.user_id);
+
+        if (profileError || !userData.user) {
+          return {
+            user_id: member.user_id,
+            email: null,
+            name: "Unknown User",
+            avatar_url: null,
+            role: member.role,
+            joined_at: member.joined_at || new Date().toISOString(),
+          } satisfies ClubMemberProfile;
+        }
+
+        return {
+          user_id: member.user_id,
+          email: userData.user.email ?? null,
+          name:
+            userData.user.user_metadata?.name ||
+            userData.user.email?.split("@")[0] ||
+            "Member",
+          avatar_url:
+            userData.user.user_metadata?.avatar_url ||
+            userData.user.user_metadata?.picture ||
+            null,
+          role: member.role,
+          joined_at: member.joined_at || new Date().toISOString(),
+        } satisfies ClubMemberProfile;
+      })
+    );
+
+    return { data: profileRows, error: null };
+  } catch (error) {
+    console.error("Get club members with profiles error:", error);
+    return {
+      data: null,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch member profile details",
+    };
+  }
+}
+
+/**
+ * Lookup a user by email for club invitation (owner only)
+ */
+export async function findUserByEmailForClub(
+  clubId: string,
+  email: string
+): Promise<
+  ActionResult<{
+    id: string;
+    email: string;
+    name: string;
+    avatar_url: string | null;
+  }>
+> {
+  try {
+    const supabase = await createClient();
+    const adminClient = createAdminClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { data: null, error: "User not authenticated" };
+    }
+
+    const { data: club, error: clubError } = await supabase
+      .from("clubs")
+      .select("owner_id")
+      .eq("id", clubId)
+      .single();
+
+    if (clubError || !club) {
+      return { data: null, error: "Club not found" };
+    }
+
+    if (club.owner_id !== user.id) {
+      return { data: null, error: "Only the club owner can invite members" };
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      return { data: null, error: "Email is required" };
+    }
+
+    let users: any[] = [];
+    const result = await (adminClient.auth.admin.listUsers as any)({
+      page: 1,
+      perPage: 1000,
+    });
+    users = result?.data?.users || [];
+
+    const matched = users.find(
+      (u) => typeof u.email === "string" && u.email.toLowerCase() === normalizedEmail
+    );
+
+    if (!matched) {
+      return { data: null, error: "No user found with this email" };
+    }
+
+    return {
+      data: {
+        id: matched.id,
+        email: matched.email,
+        name: matched.user_metadata?.name || matched.email.split("@")[0] || "User",
+        avatar_url: matched.user_metadata?.avatar_url || matched.user_metadata?.picture || null,
+      },
+      error: null,
+    };
+  } catch (error) {
+    console.error("Find user by email error:", error);
+    return {
+      data: null,
+      error: error instanceof Error ? error.message : "Failed to find user",
     };
   }
 }

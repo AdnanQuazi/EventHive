@@ -55,7 +55,7 @@ export function EventOrganizers() {
             </span>
           </h2>
           <p className="text-md text-muted-foreground max-w-3xl mx-auto">
-            Whether you're organizing college fests, hackathons, workshops, or local meetups, 
+            Whether you&apos;re organizing college fests, hackathons, workshops, or local meetups, 
             EventHive provides everything you need to create memorable experiences.
           </p>
         </div>
@@ -111,7 +111,7 @@ export function EventOrganizers() {
             </h3>
             <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
               Join thousands of organizers who trust EventHive to bring their communities together. 
-              It's free to get started, and takes less than 5 minutes.
+              It&apos;s free to get started, and takes less than 5 minutes.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button 

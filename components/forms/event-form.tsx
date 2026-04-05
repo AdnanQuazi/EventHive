@@ -7,9 +7,11 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import {
   CalendarIcon,
+  CheckCircle2,
   ImageIcon,
   Loader2,
   MapPin,
+  Sparkles,
   Upload,
   X,
 } from "lucide-react";
@@ -44,9 +46,11 @@ import {
 import { toast } from "sonner";
 import { createEvent } from "@/lib/actions/events";
 import { getManagedClubs } from "@/lib/actions/clubs";
+import { generateEventMainImages } from "@/lib/actions/ai-images";
 import { uploadImage, uploadMultipleImages } from "@/lib/actions/uploads";
 import type { Club } from "@/lib/actions/clubs";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = [
@@ -126,12 +130,24 @@ const eventFormSchema = z
 
 type EventFormValues = z.infer<typeof eventFormSchema>;
 
+type GeneratedMainImage = {
+  id: string;
+  dataUrl: string;
+  prompt: string;
+};
+
 export function EventForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loadingClubs, setLoadingClubs] = useState(true);
   const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
+  const [mainImageSource, setMainImageSource] = useState<"manual" | "ai" | null>(null);
+  const [mainImageMode, setMainImageMode] = useState<"manual" | "ai">("manual");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGeneratingAiImages, setIsGeneratingAiImages] = useState(false);
+  const [generatedMainImages, setGeneratedMainImages] = useState<GeneratedMainImage[]>([]);
+  const [selectedGeneratedImageId, setSelectedGeneratedImageId] = useState<string | null>(null);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
 
   const form = useForm<EventFormValues>({
@@ -155,6 +171,70 @@ export function EventForm() {
 
   const eventType = form.watch("event_type");
 
+  const dataUrlToFile = async (dataUrl: string, fileNamePrefix: string) => {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    const extension = blob.type.split("/")[1] || "png";
+    return new File([blob], `${fileNamePrefix}-${Date.now()}.${extension}`, {
+      type: blob.type,
+    });
+  };
+
+  const force16By9DataUrl = async (dataUrl: string) => {
+    const image = new Image();
+
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Failed to load generated image"));
+      image.src = dataUrl;
+    });
+
+    const targetWidth = 1600;
+    const targetHeight = 900;
+    const targetRatio = targetWidth / targetHeight;
+    const sourceRatio = image.width / image.height;
+
+    let sx = 0;
+    let sy = 0;
+    let sw = image.width;
+    let sh = image.height;
+
+    if (sourceRatio > targetRatio) {
+      sw = image.height * targetRatio;
+      sx = (image.width - sw) / 2;
+    } else if (sourceRatio < targetRatio) {
+      sh = image.width / targetRatio;
+      sy = (image.height - sh) / 2;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Unable to process generated image");
+    }
+
+    context.drawImage(image, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+    return canvas.toDataURL("image/jpeg", 0.92);
+  };
+
+  const setMainImageFromDataUrl = async (dataUrl: string, source: "manual" | "ai") => {
+    const normalizedDataUrl = source === "ai" ? await force16By9DataUrl(dataUrl) : dataUrl;
+    const file = await dataUrlToFile(
+      normalizedDataUrl,
+      source === "ai" ? "generated-main-image" : "main-image"
+    );
+    form.setValue("main_image", file, {
+      shouldDirty: true,
+      shouldValidate: true,
+      shouldTouch: true,
+    });
+    setMainImagePreview(normalizedDataUrl);
+    setMainImageSource(source);
+  };
+
   // Load user's clubs
   useEffect(() => {
     async function loadClubs() {
@@ -171,13 +251,77 @@ export function EventForm() {
   const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      form.setValue("main_image", file);
+      form.setValue("main_image", file, {
+        shouldDirty: true,
+        shouldValidate: true,
+        shouldTouch: true,
+      });
+      setMainImageSource("manual");
+      setSelectedGeneratedImageId(null);
       const reader = new FileReader();
       reader.onloadend = () => {
         setMainImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleGenerateMainImages = async () => {
+    const title = form.getValues("title")?.trim();
+    const category = form.getValues("category")?.trim();
+    const description = form.getValues("description")?.trim();
+
+    const effectivePrompt =
+      aiPrompt.trim() ||
+      [title, category, description].filter(Boolean).join(" | ");
+
+    if (!effectivePrompt) {
+      toast.error("Add a prompt or fill title/category/description first");
+      return;
+    }
+
+    setIsGeneratingAiImages(true);
+    setMainImageMode("ai");
+
+    try {
+      const result = await generateEventMainImages({
+        prompt: effectivePrompt,
+        title,
+        category,
+        count: 4,
+      });
+
+      if (result.error || !result.data) {
+        toast.error(result.error || "Failed to generate images");
+        return;
+      }
+
+      const newlyGenerated = result.data.images.map((dataUrl, index) => ({
+        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+        dataUrl,
+        prompt: effectivePrompt,
+      }));
+
+      setGeneratedMainImages((prev) => [...newlyGenerated, ...prev].slice(0, 12));
+
+      const first = newlyGenerated[0];
+      if (first) {
+        setSelectedGeneratedImageId(first.id);
+        await setMainImageFromDataUrl(first.dataUrl, "ai");
+      }
+
+      toast.success("AI images generated. Pick your favorite one.");
+    } catch (error) {
+      console.error("Generate AI images error:", error);
+      toast.error("Failed to generate AI images");
+    } finally {
+      setIsGeneratingAiImages(false);
+    }
+  };
+
+  const handleSelectGeneratedMainImage = async (image: GeneratedMainImage) => {
+    setSelectedGeneratedImageId(image.id);
+    await setMainImageFromDataUrl(image.dataUrl, "ai");
   };
 
   // Handle gallery images change
@@ -334,7 +478,7 @@ export function EventForm() {
                   <FormControl>
                     <Textarea
                       placeholder="Describe your event in detail (supports Markdown)..."
-                      className="min-h-[150px]"
+                      className="min-h-40"
                       {...field}
                     />
                   </FormControl>
@@ -643,25 +787,116 @@ export function EventForm() {
                   <FormLabel>Main Event Image *</FormLabel>
                   <FormControl>
                     <div className="space-y-4">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleMainImageChange}
-                        {...field}
-                      />
+                      <Tabs
+                        value={mainImageMode}
+                        onValueChange={(value) => setMainImageMode(value as "manual" | "ai")}
+                        className="w-full"
+                      >
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="manual">Upload manually</TabsTrigger>
+                          <TabsTrigger value="ai">Generate with AI</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="manual" className="space-y-3">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleMainImageChange}
+                            {...field}
+                          />
+                        </TabsContent>
+
+                        <TabsContent value="ai" className="space-y-3">
+                          <Textarea
+                            placeholder="Describe the main event image you want, e.g. futuristic coding hackathon stage with neon lighting"
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            className="min-h-24"
+                          />
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              onClick={handleGenerateMainImages}
+                              disabled={isGeneratingAiImages}
+                              className="rounded-full"
+                            >
+                              {isGeneratingAiImages ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Generating...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="mr-2 h-4 w-4" />
+                                  Generate 4 images
+                                </>
+                              )}
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleGenerateMainImages}
+                              disabled={isGeneratingAiImages || generatedMainImages.length === 0}
+                              className="rounded-full"
+                            >
+                              Regenerate
+                            </Button>
+                          </div>
+
+                          {generatedMainImages.length > 0 && (
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                              {generatedMainImages.map((generated) => {
+                                const isSelected = selectedGeneratedImageId === generated.id;
+                                return (
+                                  <button
+                                    key={generated.id}
+                                    type="button"
+                                    onClick={() => handleSelectGeneratedMainImage(generated)}
+                                    className={cn(
+                                      "relative aspect-video overflow-hidden rounded-xl border text-left transition",
+                                      isSelected
+                                        ? "border-accent ring-2 ring-accent/40"
+                                        : "border-border hover:border-accent/60"
+                                    )}
+                                  >
+                                    <img
+                                      src={generated.dataUrl}
+                                      alt="Generated event option"
+                                      className="h-full w-full object-cover"
+                                    />
+                                    {isSelected && (
+                                      <div className="absolute right-2 top-2 rounded-full bg-accent p-1 text-accent-foreground">
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                      </div>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </TabsContent>
+                      </Tabs>
+
                       {mainImagePreview && (
-                        <div className="relative w-full h-48 rounded-md overflow-hidden border">
+                        <div className="relative aspect-video w-full rounded-md overflow-hidden border">
                           <img
                             src={mainImagePreview}
                             alt="Main preview"
                             className="w-full h-full object-cover"
                           />
+                          {mainImageSource && (
+                            <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white">
+                              {mainImageSource === "ai" ? "AI selected" : "Uploaded"}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
                   </FormControl>
                   <FormDescription>
-                    Main image for your event (max 5MB)
+                    Upload manually or generate with Gemini AI. Selected image is uploaded and stored exactly like manual uploads.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

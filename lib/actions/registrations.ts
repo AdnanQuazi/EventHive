@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { randomBytes } from "crypto";
+import { sendRegistrationEmail } from "@/lib/services/email";
 
 /**
  * Generate a unique registration token
@@ -16,6 +17,7 @@ function generateRegistrationToken(): string {
  */
 export async function createRegistration(eventId: string, userId: string) {
   const supabase = await createClient();
+  const supabaseAdmin = createAdminClient();
   
   // Check if user is already registered
   const { data: existingRegistration } = await supabase
@@ -46,6 +48,41 @@ export async function createRegistration(eventId: string, userId: string) {
   if (error) {
     console.error("Error creating registration:", error);
     return { success: false, error: error.message };
+  }
+
+  // Fetch event details
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("id, title, start_date, venue, city")
+    .eq("id", eventId)
+    .single();
+
+  // Fetch user details
+  const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+  // Send registration email if both event and user data are available
+  if (event && userData?.user?.email && !eventError && !userError) {
+    const attendeeName = userData.user.user_metadata?.name || "Guest";
+    const attendeeEmail = userData.user.email;
+    const eventVenue = event.city ? `${event.venue}, ${event.city}` : event.venue;
+
+    const emailResult = await sendRegistrationEmail({
+      attendeeEmail,
+      attendeeName,
+      eventTitle: event.title,
+      eventDate: event.start_date,
+      eventVenue,
+      registrationToken,
+    });
+
+    if (!emailResult.success) {
+      console.warn("Failed to send registration email:", emailResult.error);
+      // Don't fail the registration if email fails
+    } else {
+      console.log("Registration email sent successfully to:", attendeeEmail);
+    }
+  } else {
+    console.warn("Could not send registration email - missing event or user data");
   }
 
   return { success: true, registration: data };
