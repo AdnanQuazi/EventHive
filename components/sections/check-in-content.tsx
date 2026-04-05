@@ -100,6 +100,7 @@ export function CheckInContent({ registration, token, currentUser, hasPermission
                   src={event.main_image_url}
                   alt={event.title}
                   fill
+                  unoptimized
                   className="object-cover"
                 />
               ) : (
@@ -270,7 +271,7 @@ export function CheckInContent({ registration, token, currentUser, hasPermission
                               Security Notice
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Please verify the attendee's identity before confirming check-in. 
+                              Please verify the attendee&apos;s identity before confirming check-in. 
                               Only event organizers and club admins/managers can check in attendees.
                             </p>
                           </div>

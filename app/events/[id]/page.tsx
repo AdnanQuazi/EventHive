@@ -63,6 +63,21 @@ export default async function EventPage({ params }: EventPageProps) {
   // Check if user is the host
   const isHost = event.owner_id === user.id;
 
+  // Check edit permission (event owner OR club owner/admin)
+  let canEdit = isHost;
+  if (!canEdit && event.club_id) {
+    const { data: membership } = await supabase
+      .from("club_members")
+      .select("role")
+      .eq("club_id", event.club_id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (membership && (membership.role === "Owner" || membership.role === "Admin")) {
+      canEdit = true;
+    }
+  }
+
   // Check if user is already registered
   const isRegistered = event.attendees?.includes(user.id) || false;
 
@@ -84,6 +99,7 @@ export default async function EventPage({ params }: EventPageProps) {
             ownerAvatar={ownerAvatar}
             currentUserId={user.id}
             isHost={isHost}
+            canEdit={canEdit}
             isRegistered={isRegistered}
             attendeeDetails={attendeeDetails}
           />

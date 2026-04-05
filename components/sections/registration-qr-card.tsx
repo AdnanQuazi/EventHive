@@ -73,10 +73,11 @@ export function RegistrationQRCard({ registration }: RegistrationQRCardProps) {
             src={event.main_image_url}
             alt={event.title}
             fill
+            unoptimized
             className="object-cover"
           />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-purple-500 to-pink-500" />
+          <div className="h-full w-full bg-linear-to-br from-purple-500 to-pink-500" />
         )}
         {registration.checked_in && (
           <div className="absolute top-4 right-4">
@@ -132,7 +133,7 @@ export function RegistrationQRCard({ registration }: RegistrationQRCardProps) {
           <>
             <div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-6">
               {isLoading ? (
-                <div className="h-[200px] w-[200px] animate-pulse rounded-lg bg-muted" />
+                <div className="h-50 w-50 animate-pulse rounded-lg bg-muted" />
               ) : qrCodeUrl ? (
                 <>
                   <div className="rounded-lg border-4 border-white p-2 shadow-lg">

@@ -116,7 +116,10 @@ export async function updateEvent(
     let hasPermission = event.owner_id === user.id;
 
     if (!hasPermission && event.club_id) {
-      hasPermission = await checkClubPermission(event.club_id, user.id);
+      hasPermission = await checkClubPermission(event.club_id, user.id, [
+        "Owner",
+        "Admin",
+      ]);
     }
 
     if (!hasPermission) {

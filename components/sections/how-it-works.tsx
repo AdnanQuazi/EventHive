@@ -268,7 +268,7 @@ export function HowItWorks() {
                             {/* Community Section */}
                             <div className="space-y-2">
                               <div className="flex items-center justify-between px-1">
-                                <span className="text-xs font-semibold text-foreground">Who's going</span>
+                                <span className="text-xs font-semibold text-foreground">Who&apos;s going</span>
                                 <span className="text-[10px] text-purple-400 font-semibold">+50</span>
                               </div>
                               

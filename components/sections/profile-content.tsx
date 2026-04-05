@@ -34,6 +34,7 @@ import {
   Star,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import type { Event } from "@/lib/actions/events";
@@ -124,9 +125,9 @@ export function ProfileContent({ user, events, clubs, registrations }: ProfileCo
         id: club.id,
         name: club.name,
         description: club.description || "",
-        members: 0, // Can be enhanced with member count query
+        members: (club as { member_count?: number }).member_count || 0,
         image: club.image_url || "/temp.jpg",
-        location: "Location", // Can be added to schema later
+        location: (club as { city?: string | null }).city || "Location",
         rating: club.rating || 0,
         upcomingEvents: 0, // Can be enhanced with event count query
       })),
@@ -134,9 +135,9 @@ export function ProfileContent({ user, events, clubs, registrations }: ProfileCo
         id: club.id,
         name: club.name,
         description: club.description || "",
-        members: 0,
+        members: (club as { member_count?: number }).member_count || 0,
         image: club.image_url || "/temp.jpg",
-        location: "Location",
+        location: (club as { city?: string | null }).city || "Location",
         rating: club.rating || 0,
         upcomingEvents: 0,
       })),
@@ -435,7 +436,7 @@ function ClubGrid({
 
 // Club Card Component
 function ClubCard({ club, role }: { club: any; role: "owner" | "member" }) {
-  return (
+  const cardContent = (
     <Card className="group relative overflow-hidden bg-white/5 backdrop-blur-xl hover:bg-white/10 transition-all duration-300 cursor-pointer hover:scale-[1.01] rounded-3xl border-0 shadow-none">
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row gap-0">
@@ -476,6 +477,11 @@ function ClubCard({ club, role }: { club: any; role: "owner" | "member" }) {
                 <Users className="w-4 h-4" />
                 <span>{club.members.toLocaleString()} members</span>
               </div>
+              {role === "owner" && (
+                <div className="inline-flex items-center rounded-full bg-accent/20 px-3 py-1 text-xs font-semibold text-accent">
+                  Manage Club
+                </div>
+              )}
               {club.upcomingEvents > 0 && (
                 <div className="flex items-center gap-2 text-sm text-accent">
                   <Calendar className="w-4 h-4" />
@@ -488,6 +494,16 @@ function ClubCard({ club, role }: { club: any; role: "owner" | "member" }) {
       </CardContent>
     </Card>
   );
+
+  if (role === "owner") {
+    return (
+      <Link href={`/clubs/${club.id}`} className="block">
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return cardContent;
 }
 
 // Event Grid Component with Empty State
