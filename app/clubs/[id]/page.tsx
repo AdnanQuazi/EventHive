@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FloatingNavbar } from "@/components/layout/floating-navbar";
-import { getClubById, getClubMembersWithProfiles } from "@/lib/actions/clubs";
+import { getClubById, getClubMembersWithProfilesForMembers, getClubMembers } from "@/lib/actions/clubs";
 import { ClubManageContent } from "@/components/sections/club-manage-content";
+import { ClubMemberContent } from "@/components/sections/club-member-content";
+import { ClubChatContent } from "@/components/sections/club-chat-content";
 
 interface ClubManagePageProps {
   params: Promise<{ id: string }>;
@@ -26,11 +28,26 @@ export default async function ClubManagePage({ params }: ClubManagePageProps) {
   }
 
   const club = clubResult.data;
-  if (club.owner_id !== user.id) {
+
+  // First check if user is a member of this club
+  const membershipResult = await getClubMembers(id);
+  if (membershipResult.error || !membershipResult.data) {
     redirect("/profile");
   }
 
-  const membersResult = await getClubMembersWithProfiles(id);
+  const isMember = membershipResult.data.some(member => member.user_id === user.id);
+  const userRole = membershipResult.data.find(member => member.user_id === user.id)?.role;
+  const isOwner = club.owner_id === user.id;
+  const isAdmin = userRole === "Admin";
+  const canManage = isOwner || isAdmin;
+
+  // If not a member, redirect to profile
+  if (!isMember) {
+    redirect("/profile");
+  }
+
+  // Now get member profiles (any member can view this)
+  const membersResult = await getClubMembersWithProfilesForMembers(id);
   const members = membersResult.data || [];
 
   return (
@@ -42,17 +59,46 @@ export default async function ClubManagePage({ params }: ClubManagePageProps) {
       <FloatingNavbar />
 
       <div className="container mx-auto px-4 pt-32 pb-16 relative z-10 max-w-6xl">
-        <ClubManageContent
-          club={{
-            id: club.id,
-            name: club.name,
-            description: club.description,
-            image_url: club.image_url,
-            city: (club as { city?: string | null }).city || null,
-            created_at: club.created_at || new Date().toISOString(),
-          }}
-          initialMembers={members}
-        />
+        {canManage ? (
+          // Owner/Admin view: Full management + chat
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div className="lg:col-span-2">
+              <ClubManageContent
+                club={{
+                  id: club.id,
+                  name: club.name,
+                  description: club.description,
+                  image_url: club.image_url,
+                  city: (club as { city?: string | null }).city || null,
+                  created_at: club.created_at || new Date().toISOString(),
+                }}
+                initialMembers={members}
+              />
+            </div>
+            <div className="lg:col-span-1 h-[600px]">
+              <ClubChatContent
+                clubId={club.id}
+                userId={user.id}
+                clubOwnerId={club.owner_id}
+              />
+            </div>
+          </div>
+        ) : (
+          // Member view: Club info + chat
+          <ClubMemberContent
+            club={{
+              id: club.id,
+              name: club.name,
+              description: club.description,
+              image_url: club.image_url,
+              city: (club as { city?: string | null }).city || null,
+              created_at: club.created_at || new Date().toISOString(),
+              owner_id: club.owner_id,
+            }}
+            members={members}
+            currentUserId={user.id}
+          />
+        )}
       </div>
     </main>
   );

@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { MapPin, QrCode, Ticket, Users } from "lucide-react";
+import Link from "next/link";
 
 export function HeroSection() {
   return (
@@ -66,12 +67,14 @@ export function HeroSection() {
             happening around your campus and city.
           </p>
 
-          <Button
-            size="sm"
-            className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-full px-6 py-6 text-md font-bold"
-          >
-            Start Exploring
-          </Button>
+          <Link href="/explore">
+            <Button
+              size="sm"
+              className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-full px-6 py-6 text-md font-bold"
+            >
+              Start Exploring
+            </Button>
+          </Link>
         </div>
         <div className="flex flex-col items-center justify-center gap-15">
           <div className="glass-strong rounded-xl p-1 float shadow-lg rotate-12">

@@ -8,6 +8,7 @@ import {
   Calendar,
   Clock,
   Edit,
+  Trash2,
   MapPin,
   Users,
   Share2,
@@ -25,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { registerForEvent, unregisterFromEvent } from "@/lib/actions/events";
+import { registerForEvent, unregisterFromEvent, deleteEvent } from "@/lib/actions/events";
 import type { Event } from "@/lib/actions/events";
 import type { Tables } from "@/lib/types/database";
 
@@ -39,6 +40,7 @@ interface EventDetailContentProps {
   currentUserId: string;
   isHost: boolean;
   canEdit: boolean;
+  isAdmin: boolean;
   isRegistered: boolean;
   attendeeDetails: Record<string, { name: string; avatar: string | null }>;
 }
@@ -51,6 +53,7 @@ export function EventDetailContent({
   currentUserId,
   isHost: initialIsHost,
   canEdit,
+  isAdmin,
   isRegistered: initialIsRegistered,
   attendeeDetails,
 }: EventDetailContentProps) {
@@ -104,6 +107,27 @@ export function EventDetailContent({
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await deleteEvent(event.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Event deleted successfully");
+        router.push("/events");
+      }
+    } catch (error) {
+      toast.error("An error occurred while deleting the event");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-20">
@@ -124,6 +148,18 @@ export function EventDetailContent({
               >
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Event
+              </Button>
+            )}
+            {(isAdmin || initialIsHost) && (
+              <Button
+                type="button"
+                variant="destructive"
+                className="rounded-full shrink-0"
+                onClick={handleDelete}
+                disabled={isLoading}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Event
               </Button>
             )}
           </div>
