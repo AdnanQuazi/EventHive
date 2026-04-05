@@ -58,14 +58,27 @@ export function SearchResults({
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || "all");
   const [selectedCity, setSelectedCity] = useState(initialCity || "all");
   const [selectedType, setSelectedType] = useState<string>(initialType || "all");
+  const [sortBy, setSortBy] = useState<"latest" | "earliest" | "popular">("latest");
 
   // Filter events locally for instant feedback
-  const filteredEvents = initialEvents.filter((event) => {
+  let filteredEvents = initialEvents.filter((event) => {
     const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
     const matchesCity = selectedCity === "all" || event.city === selectedCity;
     const matchesType = selectedType === "all" || event.event_type === selectedType;
     
     return matchesCategory && matchesCity && matchesType;
+  });
+
+  // Sort events
+  filteredEvents = [...filteredEvents].sort((a, b) => {
+    if (sortBy === "latest") {
+      return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+    } else if (sortBy === "earliest") {
+      return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+    } else if (sortBy === "popular") {
+      return (b.attendees?.length || 0) - (a.attendees?.length || 0);
+    }
+    return 0;
   });
 
   const handleSearch = (e?: React.FormEvent) => {
@@ -93,13 +106,28 @@ export function SearchResults({
   return (
     <div className="container mx-auto px-4 pt-32 pb-16 relative z-10 max-w-7xl">
       {/* Search Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">
-          {initialQuery ? `Search results for "${initialQuery}"` : "Search Events"}
-        </h1>
-        <p className="text-muted-foreground">
-          Found {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
-        </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold mb-2">
+            {initialQuery ? `Search results for "${initialQuery}"` : "Explore Events"}
+          </h1>
+          <p className="text-muted-foreground">
+            Found {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <div className="w-48">
+          <label className="text-sm font-medium block mb-2">Sort by</label>
+          <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+            <SelectTrigger className="bg-white/10 border-white/20 rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-background border-border rounded-2xl">
+              <SelectItem value="latest">Latest First</SelectItem>
+              <SelectItem value="earliest">Earliest First</SelectItem>
+              <SelectItem value="popular">Most Popular</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Filters */}

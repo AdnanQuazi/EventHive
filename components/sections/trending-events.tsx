@@ -4,6 +4,7 @@ import { EventCard } from "./event-card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { format } from "date-fns";
+import Link from "next/link";
 import type { Event } from "@/lib/actions/events";
 
 interface TrendingEventsProps {
@@ -30,13 +31,16 @@ export function TrendingEvents({
               <p className="text-muted-foreground mt-2">{subtitle}</p>
             )}
           </div>
-          <Button
-            variant="ghost"
-            className="text-accent hover:text-accent/90 hover:bg-accent/10 gap-2 rounded-full px-6 transition-all"
-          >
-            See all events
-            <ArrowRight className="w-4 h-4" />
-          </Button>
+          <Link href="/explore">
+
+            <Button
+              variant="ghost"
+              className="text-accent hover:text-accent/90 hover:bg-accent/10 gap-2 rounded-full px-6 transition-all"
+            >
+              See all events
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
         </div>
 
         {/* Events Grid */}

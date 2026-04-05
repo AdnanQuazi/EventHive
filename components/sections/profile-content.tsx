@@ -35,8 +35,11 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { deleteEvent } from "@/lib/actions/events";
 import type { Event } from "@/lib/actions/events";
 import type { Club } from "@/lib/actions/clubs";
 import { format } from "date-fns";
@@ -54,6 +57,29 @@ export function ProfileContent({ user, events, clubs, registrations }: ProfileCo
   const [isPastOpen, setIsPastOpen] = useState(false);
   const [isOwnedClubsOpen, setIsOwnedClubsOpen] = useState(true);
   const [isMemberClubsOpen, setIsMemberClubsOpen] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const router = useRouter();
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
+      return;
+    }
+
+    setIsDeleting(eventId);
+    try {
+      const result = await deleteEvent(eventId);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Event deleted successfully");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("An error occurred while deleting this event");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   const getUserName = () => {
     return user?.user_metadata?.name || "User";
@@ -70,6 +96,8 @@ export function ProfileContent({ user, events, clubs, registrations }: ProfileCo
     }
     return user?.email?.charAt(0).toUpperCase() || "U";
   };
+
+  const isAdmin = user.email?.toLowerCase() === "atharvapawar80078@gmail.com";
 
   const getUserAvatar = () => {
     return user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
@@ -186,9 +214,12 @@ export function ProfileContent({ user, events, clubs, registrations }: ProfileCo
 
                 {/* Name & Email */}
                 <div className="w-full space-y-1">
-                  <h1 className="text-2xl font-bold text-foreground">
-                    {getUserName()}
-                  </h1>
+                  <div className="flex items-center justify-center gap-2">
+                    {isAdmin && <Shield className="w-5 h-5 text-accent" />}
+                    <h1 className="text-2xl font-bold text-foreground">
+                      {getUserName()}
+                    </h1>
+                  </div>
                   <p className="text-sm text-muted-foreground break-words">
                     {user.email}
                   </p>
@@ -268,7 +299,7 @@ export function ProfileContent({ user, events, clubs, registrations }: ProfileCo
                   }`} />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="transition-all duration-300 ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2">
-                  <EventGrid events={upcomingEvents} filter={filter} />
+                  <EventGrid events={upcomingEvents} filter={filter} onDelete={handleDeleteEvent} deletingId={isDeleting} />
                 </CollapsibleContent>
               </Collapsible>
 
@@ -284,7 +315,7 @@ export function ProfileContent({ user, events, clubs, registrations }: ProfileCo
                   }`} />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="transition-all duration-300 ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2">
-                  <EventGrid events={historyEvents} filter={filter} />
+                  <EventGrid events={historyEvents} filter={filter} onDelete={handleDeleteEvent} deletingId={isDeleting} />
                 </CollapsibleContent>
               </Collapsible>
             </CardContent>
@@ -503,16 +534,25 @@ function ClubCard({ club, role }: { club: any; role: "owner" | "member" }) {
     );
   }
 
-  return cardContent;
+  // Make member clubs clickable too
+  return (
+    <Link href={`/clubs/${club.id}`} className="block">
+      {cardContent}
+    </Link>
+  );
 }
 
 // Event Grid Component with Empty State
 function EventGrid({
   events,
   filter,
+  onDelete,
+  deletingId,
 }: {
   events: any[];
   filter: "all" | "organizing" | "participating";
+  onDelete?: (eventId: string) => void;
+  deletingId?: string | null;
 }) {
   const filteredEvents = events.filter((event) => {
     if (filter === "all") return true;
@@ -549,6 +589,8 @@ function EventGrid({
           eventType={event.eventType}
           attendees={event.attendees}
           attendeeAvatars={event.attendeeAvatars}
+          onDelete={event.role === "organizing" ? () => onDelete?.(event.id) : undefined}
+          isDeleting={deletingId === event.id}
         />
       ))}
     </div>

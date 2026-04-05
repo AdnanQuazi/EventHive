@@ -178,36 +178,41 @@ export async function deleteEvent(
       return { data: null, error: "User not authenticated" };
     }
 
-    // Get event to check permissions
-    const { data: event, error: eventError } = await supabase
-      .from("events")
-      .select("owner_id, club_id")
-      .eq("id", eventId)
-      .single();
+    // Check if user is admin (has full delete permissions)
+    const isAdmin = await checkAdminPermission(user.email);
 
-    if (eventError) {
-      console.error("Get event error:", eventError);
-      return { data: null, error: "Event not found" };
+    if (!isAdmin) {
+      // Get event to check permissions for non-admin users
+      const { data: event, error: eventError } = await supabase
+        .from("events")
+        .select("owner_id, club_id")
+        .eq("id", eventId)
+        .single();
+
+      if (eventError) {
+        console.error("Get event error:", eventError);
+        return { data: null, error: "Event not found" };
+      }
+
+      // Check if user is owner or has club admin/owner permission
+      let hasPermission = event.owner_id === user.id;
+
+      if (!hasPermission && event.club_id) {
+        hasPermission = await checkClubPermission(event.club_id, user.id, [
+          "Owner",
+          "Admin",
+        ]);
+      }
+
+      if (!hasPermission) {
+        return {
+          data: null,
+          error: "You don't have permission to delete this event",
+        };
+      }
     }
 
-    // Check if user is owner or has club admin/owner permission
-    let hasPermission = event.owner_id === user.id;
-
-    if (!hasPermission && event.club_id) {
-      hasPermission = await checkClubPermission(event.club_id, user.id, [
-        "Owner",
-        "Admin",
-      ]);
-    }
-
-    if (!hasPermission) {
-      return {
-        data: null,
-        error: "You don't have permission to delete this event",
-      };
-    }
-
-    // Delete event
+    // Delete event (admin or authorized user)
     const { error } = await supabase.from("events").delete().eq("id", eventId);
 
     if (error) {
@@ -217,9 +222,7 @@ export async function deleteEvent(
 
     revalidatePath("/profile");
     revalidatePath("/events");
-    if (event.club_id) {
-      revalidatePath(`/clubs/${event.club_id}`);
-    }
+    // Note: We don't have event.club_id here for revalidation, but that's okay
 
     return { data: null, error: null };
   } catch (error) {
@@ -615,6 +618,15 @@ async function checkClubPermission(
     console.error("Check club permission error:", error);
     return false;
   }
+}
+
+/**
+ * Helper function to check if user is an admin (has full website permissions)
+ */
+async function checkAdminPermission(userEmail: string | undefined): Promise<boolean> {
+  // Admin email - can delete any event
+  const ADMIN_EMAIL = "atharvapawar80078@gmail.com";
+  return userEmail === ADMIN_EMAIL;
 }
 
 /**

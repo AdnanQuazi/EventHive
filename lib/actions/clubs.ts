@@ -545,6 +545,82 @@ export async function getClubMembers(
 }
 
 /**
+ * Get club members with auth profile details (any member can view)
+ */
+export async function getClubMembersWithProfilesForMembers(
+  clubId: string
+): Promise<ActionResult<ClubMemberProfile[]>> {
+  try {
+    const supabase = await createClient();
+    const adminClient = createAdminClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { data: null, error: "User not authenticated" };
+    }
+
+    // Check if user is a member of this club
+    const { data: membership, error: membershipError } = await supabase
+      .from("club_members")
+      .select("id")
+      .eq("club_id", clubId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (membershipError || !membership) {
+      return { data: null, error: "You are not a member of this club" };
+    }
+
+    const membersResult = await getClubMembers(clubId);
+    if (membersResult.error || !membersResult.data) {
+      return { data: null, error: membersResult.error || "Failed to fetch members" };
+    }
+
+    const members = membersResult.data;
+
+    const profileRows = await Promise.all(
+      members.map(async (member) => {
+        const { data: userData, error: profileError } =
+          await adminClient.auth.admin.getUserById(member.user_id);
+
+        if (profileError || !userData.user) {
+          return {
+            user_id: member.user_id,
+            email: null,
+            name: "Unknown User",
+            avatar_url: null,
+            role: member.role,
+            joined_at: member.joined_at || new Date().toISOString(),
+          } satisfies ClubMemberProfile;
+        }
+
+        return {
+          user_id: member.user_id,
+          email: userData.user.email || null,
+          name: userData.user.user_metadata?.name || userData.user.email || "Unknown User",
+          avatar_url: userData.user.user_metadata?.avatar_url || null,
+          role: member.role,
+          joined_at: member.joined_at || new Date().toISOString(),
+        } satisfies ClubMemberProfile;
+      })
+    );
+
+    return { data: profileRows, error: null };
+  } catch (error) {
+    console.error("Get club members with profiles error:", error);
+    return {
+      data: null,
+      error:
+        error instanceof Error ? error.message : "Failed to fetch club members",
+    };
+  }
+}
+
+/**
  * Get club members with auth profile details (owner/admin/manager only)
  */
 export async function getClubMembersWithProfiles(

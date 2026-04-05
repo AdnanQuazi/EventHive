@@ -46,6 +46,54 @@ export type Database = {
           },
         ]
       }
+      club_messages: {
+        Row: {
+          id: string
+          club_id: string
+          user_id: string
+          content: string
+          created_at: string
+          updated_at: string | null
+          is_edited: boolean
+          edited_at: string | null
+        }
+        Insert: {
+          id?: string
+          club_id: string
+          user_id: string
+          content: string
+          created_at?: string
+          updated_at?: string | null
+          is_edited?: boolean
+          edited_at?: string | null
+        }
+        Update: {
+          id?: string
+          club_id?: string
+          user_id?: string
+          content?: string
+          created_at?: string
+          updated_at?: string | null
+          is_edited?: boolean
+          edited_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_messages_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clubs: {
         Row: {
           city: string | null

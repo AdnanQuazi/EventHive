@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Circle, Calendar } from "lucide-react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 interface EventCardProps {
   id: string;
@@ -20,6 +21,8 @@ interface EventCardProps {
   category?: string;
   attendees?: number;
   attendeeAvatars?: string[];
+  onDelete?: () => void;
+  isDeleting?: boolean;
 }
 
 export function EventCard({
@@ -35,6 +38,8 @@ export function EventCard({
   category,
   attendees = 0,
   attendeeAvatars = [],
+  onDelete,
+  isDeleting,
 }: EventCardProps) {
   return (
     <Link href={`/events/${id}`}>
@@ -126,6 +131,22 @@ export function EventCard({
               </span>
             )}
           </div>
+          {onDelete && (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="mt-4 w-full"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete();
+              }}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

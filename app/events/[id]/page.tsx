@@ -49,6 +49,23 @@ export default async function EventPage({ params }: EventPageProps) {
   const attendeeDetailsResult = await getUserDetailsByIds(attendeeIds);
   const attendeeDetails = attendeeDetailsResult.data || {};
 
+  // Check permissions
+  let canEdit = event.owner_id === user.id;
+  let isAdmin = user.email === "atharvapawar80078@gmail.com";
+
+  if (!canEdit && event.club_id) {
+    const { data: membership } = await supabase
+      .from("club_members")
+      .select("role")
+      .eq("club_id", event.club_id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (membership && (membership.role === "Owner" || membership.role === "Admin")) {
+      canEdit = true;
+    }
+  }
+
   // Get owner details from attendee details
   let ownerName = "Event Organizer";
   let ownerAvatar = null;
@@ -62,21 +79,6 @@ export default async function EventPage({ params }: EventPageProps) {
 
   // Check if user is the host
   const isHost = event.owner_id === user.id;
-
-  // Check edit permission (event owner OR club owner/admin)
-  let canEdit = isHost;
-  if (!canEdit && event.club_id) {
-    const { data: membership } = await supabase
-      .from("club_members")
-      .select("role")
-      .eq("club_id", event.club_id)
-      .eq("user_id", user.id)
-      .single();
-
-    if (membership && (membership.role === "Owner" || membership.role === "Admin")) {
-      canEdit = true;
-    }
-  }
 
   // Check if user is already registered
   const isRegistered = event.attendees?.includes(user.id) || false;
@@ -100,6 +102,7 @@ export default async function EventPage({ params }: EventPageProps) {
             currentUserId={user.id}
             isHost={isHost}
             canEdit={canEdit}
+            isAdmin={isAdmin}
             isRegistered={isRegistered}
             attendeeDetails={attendeeDetails}
           />

@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { 
   Heart,
   Mail,
@@ -10,35 +8,7 @@ import {
   Github,
   Linkedin,
   Instagram,
-  Send
 } from "lucide-react";
-
-const footerLinks = {
-  product: [
-    { name: "Features", href: "#" },
-    { name: "Pricing", href: "#" },
-    { name: "Security", href: "#" },
-    { name: "Roadmap", href: "#" },
-  ],
-  company: [
-    { name: "About Us", href: "#" },
-    { name: "Careers", href: "#" },
-    { name: "Blog", href: "#" },
-    { name: "Press Kit", href: "#" },
-  ],
-  resources: [
-    { name: "Documentation", href: "#" },
-    { name: "Help Center", href: "#" },
-    { name: "Community", href: "#" },
-    { name: "Contact", href: "#" },
-  ],
-  legal: [
-    { name: "Privacy Policy", href: "#" },
-    { name: "Terms of Service", href: "#" },
-    { name: "Cookie Policy", href: "#" },
-    { name: "Licenses", href: "#" },
-  ],
-};
 
 const socialLinks = [
   { icon: Twitter, href: "#", label: "Twitter", color: "hover:text-blue-400" },
@@ -61,10 +31,10 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 py-16 relative z-10">
 
         {/* Main Footer Content */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           {/* Brand Column */}
-          <div className="col-span-2">
-            <div className="flex items-center gap-2 mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center">
                 <Heart className="w-5 h-5 text-white fill-white" />
               </div>
@@ -72,9 +42,6 @@ export function Footer() {
                 EventHive
               </span>
             </div>
-            <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-              Elevating the way you discover, attend, and analyze local events. Join thousands building stronger communities.
-            </p>
             
             {/* Social Links */}
             <div className="flex items-center gap-3">
@@ -94,108 +61,42 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Links Columns */}
-          <div>
-            <h4 className="text-sm font-bold text-foreground mb-4">Product</h4>
-            <ul className="space-y-3">
-              {footerLinks.product.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-accent transition-colors duration-200"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-bold text-foreground mb-4">Company</h4>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-accent transition-colors duration-200"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-bold text-foreground mb-4">Resources</h4>
-            <ul className="space-y-3">
-              {footerLinks.resources.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-accent transition-colors duration-200"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-bold text-foreground mb-4">Legal</h4>
-            <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-accent transition-colors duration-200"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* Contact Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-8 border-t border-white/10 mb-8">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-              <Mail className="w-5 h-5 text-accent" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground mb-1">Email Us</p>
-              <a href="mailto:hello@eventhive.com" className="text-sm text-muted-foreground hover:text-accent transition-colors">
-                hello@eventhive.com
-              </a>
+          {/* Contact Info */}
+          <div className="space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <Mail className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground mb-1">Email</p>
+                <a href="mailto:atharvapawar80078@gmail.com" className="text-sm text-muted-foreground hover:text-accent transition-colors">
+                  atharvapawar80078@gmail.com
+                </a>
+              </div>
             </div>
           </div>
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-              <MapPin className="w-5 h-5 text-purple-500" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground mb-1">Visit Us</p>
-              <p className="text-sm text-muted-foreground">
-                123 Innovation Street, Tech Valley, CA 94025
-              </p>
+
+          {/* Address Info */}
+          <div className="space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-5 h-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground mb-1">Address</p>
+                <p className="text-sm text-muted-foreground">
+                  123 Innovation Street, Tech Valley, CA 94025
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
+        <div className="pt-8 border-t border-white/10">
+          <p className="text-sm text-muted-foreground text-center">
             © 2026 EventHive. All rights reserved.
           </p>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            Made with
-            <Heart className="w-4 h-4 text-red-500 fill-red-500 animate-pulse" />
-            for communities worldwide
-          </div>
         </div>
       </div>
     </footer>
