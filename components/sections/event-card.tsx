@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Circle, Calendar } from "lucide-react";
+import { Circle, Calendar, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
@@ -44,6 +44,24 @@ export function EventCard({
   return (
     <Link href={`/events/${id}`}>
       <Card className="p-0 group relative overflow-hidden bg-white/5 backdrop-blur-xl hover:bg-white/10 transition-all duration-300 cursor-pointer hover:scale-[1.02] w-full max-w-[320px] rounded-3xl border-0 shadow-none">
+        {/* Delete Button - Top Right Corner */}
+        {onDelete && (
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            className="absolute top-3 right-3 z-10 h-9 w-9 rounded-full"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete();
+            }}
+            disabled={isDeleting}
+            title="Delete event"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       <CardContent className="p-0">
         {/* Event Image */}
         <div className="relative w-full h-[170px] overflow-hidden rounded-t-3xl group-hover:scale-95 transition-transform duration-300 bg-white/5">
@@ -131,22 +149,6 @@ export function EventCard({
               </span>
             )}
           </div>
-          {onDelete && (
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              className="mt-4 w-full"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete();
-              }}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>

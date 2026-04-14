@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Tables, TablesInsert } from "@/lib/types/database";
 
@@ -8,10 +8,8 @@ export type ClubMessage = Tables<"club_messages">;
 export type ClubMessageInsert = TablesInsert<"club_messages">;
 
 export type MessageWithUser = ClubMessage & {
-  user: {
-    id: string;
-    email: string | null;
-    name: string | null;
+  user_profile?: {
+    name: string;
     avatar_url: string | null;
   };
 };
@@ -101,27 +99,26 @@ export async function getClubMessages(
       return { data: null, error: "User not authenticated" };
     }
 
-    // Verify user is a club member
-    const { data: membership, error: membershipError } = await supabase
+    // Get messages with user data
+    const client = await createClient();
+    const adminSupabase = createAdminClient();
+
+    // First verify user has access
+    const { data: membership } = await client
       .from("club_members")
       .select("id")
       .eq("club_id", clubId)
       .eq("user_id", user.id)
       .single();
 
-    if (membershipError || !membership) {
+    if (!membership) {
       return { data: null, error: "You are not a member of this club" };
     }
 
-    // Get messages with user data
-    const { data, error } = await supabase
+    // Get messages with user data using admin client
+    const { data: messages, error } = await adminSupabase
       .from("club_messages")
-      .select(
-        `
-        *,
-        user:users(id, email, name, avatar_url)
-      `
-      )
+      .select("*")
       .eq("club_id", clubId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -131,8 +128,48 @@ export async function getClubMessages(
       return { data: null, error: error.message };
     }
 
+    // Get unique user IDs from messages
+    const userIds = [...new Set(messages.map(msg => msg.user_id))];
+
+    // Fetch user profiles for all message senders
+    const userProfiles = await Promise.all(
+      userIds.map(async (userId) => {
+        const { data: userData, error: profileError } =
+          await adminSupabase.auth.admin.getUserById(userId);
+
+        if (profileError || !userData.user) {
+          return {
+            userId,
+            profile: {
+              name: "Unknown User",
+              avatar_url: null,
+            },
+          };
+        }
+
+        return {
+          userId,
+          profile: {
+            name: userData.user.user_metadata?.name || userData.user.email || "Unknown User",
+            avatar_url: userData.user.user_metadata?.avatar_url || null,
+          },
+        };
+      })
+    );
+
+    // Create a map for quick lookup
+    const profileMap = new Map(
+      userProfiles.map(({ userId, profile }) => [userId, profile])
+    );
+
+    // Attach profile data to messages
+    const messagesWithProfiles = messages.map(message => ({
+      ...message,
+      user_profile: profileMap.get(message.user_id),
+    }));
+
     // Reverse to get chronological order (newest at end)
-    return { data: (data as MessageWithUser[]).reverse(), error: null };
+    return { data: messagesWithProfiles.reverse() as MessageWithUser[], error: null };
   } catch (error) {
     console.error("Get messages error:", error);
     return {

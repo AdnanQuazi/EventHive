@@ -32,6 +32,9 @@ import {
   Compass,
   MapPin,
   Star,
+  Edit2,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -39,7 +42,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { deleteEvent } from "@/lib/actions/events";
+import { updateUserProfile, uploadProfilePicture } from "@/lib/actions/profile";
 import type { Event } from "@/lib/actions/events";
 import type { Club } from "@/lib/actions/clubs";
 import { format } from "date-fns";
@@ -52,12 +58,41 @@ interface ProfileContentProps {
 }
 
 export function ProfileContent({ user, events, clubs, registrations }: ProfileContentProps) {
+  // Helper functions - defined first so they can be used in state
+  const getUserName = () => {
+    return user?.user_metadata?.name || "User";
+  };
+
+  const getUserInitials = () => {
+    if (user?.user_metadata?.name) {
+      return user.user_metadata.name
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return user?.email?.charAt(0).toUpperCase() || "U";
+  };
+
+  const getUserAvatar = () => {
+    return user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+  };
+
+  const isAdmin = user.email?.toLowerCase() === "atharvapawar80078@gmail.com";
+
+  // State
   const [filter, setFilter] = useState<"all" | "organizing" | "participating">("all");
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(true);
   const [isPastOpen, setIsPastOpen] = useState(false);
   const [isOwnedClubsOpen, setIsOwnedClubsOpen] = useState(true);
   const [isMemberClubsOpen, setIsMemberClubsOpen] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState(getUserName());
+  const [editAvatar, setEditAvatar] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState(getUserAvatar());
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const router = useRouter();
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -81,26 +116,60 @@ export function ProfileContent({ user, events, clubs, registrations }: ProfileCo
     }
   };
 
-  const getUserName = () => {
-    return user?.user_metadata?.name || "User";
-  };
-
-  const getUserInitials = () => {
-    if (user?.user_metadata?.name) {
-      return user.user_metadata.name
-        .split(" ")
-        .map((n: string) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditAvatar(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-    return user?.email?.charAt(0).toUpperCase() || "U";
   };
 
-  const isAdmin = user.email?.toLowerCase() === "atharvapawar80078@gmail.com";
+  const handleSaveProfile = async () => {
+    setIsUpdatingProfile(true);
+    try {
+      let avatarUrl: string | undefined = undefined;
 
-  const getUserAvatar = () => {
-    return user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+      // Upload avatar if changed
+      if (editAvatar) {
+        const uploadResult = await uploadProfilePicture(editAvatar);
+        if (uploadResult.error) {
+          toast.error(uploadResult.error);
+          setIsUpdatingProfile(false);
+          return;
+        }
+        avatarUrl = uploadResult.data || undefined;
+      }
+
+      // Update profile
+      const updateResult = await updateUserProfile(
+        editName || undefined,
+        avatarUrl
+      );
+
+      if (updateResult.error) {
+        toast.error(updateResult.error);
+      } else {
+        toast.success("Profile updated successfully");
+        setIsEditingProfile(false);
+        setEditAvatar(null);
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingProfile(false);
+    setEditName(getUserName());
+    setEditAvatar(null);
+    setPreviewUrl(getUserAvatar());
   };
 
   // Process events - separate into upcoming and past
@@ -204,28 +273,102 @@ export function ProfileContent({ user, events, clubs, registrations }: ProfileCo
           <Card className="lg:col-span-3 bg-white/5 backdrop-blur-xl border-0 rounded-3xl overflow-hidden lg:sticky lg:top-32 h-fit">
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center space-y-6">
-                {/* Avatar */}
-                <Avatar className="w-32 h-32 border-4 border-white/20">
-                  <AvatarImage src={getUserAvatar()} alt={getUserName()} />
-                  <AvatarFallback className="text-4xl bg-linear-to-br from-purple-500 to-blue-500 text-white">
-                    {getUserInitials()}
-                  </AvatarFallback>
-                </Avatar>
+                {isEditingProfile ? (
+                  <>
+                    {/* Edit Avatar Section */}
+                    <div className="relative">
+                      <Avatar className="w-32 h-32 border-4 border-white/20">
+                        <AvatarImage src={previewUrl || undefined} alt="Preview" />
+                        <AvatarFallback className="text-4xl bg-linear-to-br from-purple-500 to-blue-500 text-white">
+                          {getUserInitials()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <label className="absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 rounded-full p-2 cursor-pointer transition-colors">
+                        <Upload className="w-4 h-4 text-white" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
 
-                {/* Name & Email */}
-                <div className="w-full space-y-1">
-                  <div className="flex items-center justify-center gap-2">
-                    {isAdmin && <Shield className="w-5 h-5 text-accent" />}
-                    <h1 className="text-2xl font-bold text-foreground">
-                      {getUserName()}
-                    </h1>
-                  </div>
-                  <p className="text-sm text-muted-foreground break-words">
-                    {user.email}
-                  </p>
-                </div>
+                    {/* Edit Name Section */}
+                    <div className="w-full space-y-3">
+                      <div>
+                        <Label htmlFor="name" className="text-sm text-muted-foreground mb-2 block">Username</Label>
+                        <Input
+                          id="name"
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          placeholder="Enter your name"
+                          className="bg-white/10 border-white/20"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                    </div>
 
-                {/* Stats */}
+                    {/* Edit Actions */}
+                    <div className="w-full space-y-2 pt-4 border-t border-white/10">
+                      <Button
+                        onClick={handleSaveProfile}
+                        disabled={isUpdatingProfile}
+                        className="w-full bg-blue-500 hover:bg-blue-600"
+                      >
+                        {isUpdatingProfile ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Changes"
+                        )}
+                      </Button>
+                      <Button
+                        onClick={handleCancelEdit}
+                        disabled={isUpdatingProfile}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Avatar */}
+                    <Avatar className="w-32 h-32 border-4 border-white/20">
+                      <AvatarImage src={getUserAvatar()} alt={getUserName()} />
+                      <AvatarFallback className="text-4xl bg-linear-to-br from-purple-500 to-blue-500 text-white">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    {/* Name & Email */}
+                    <div className="w-full space-y-1">
+                      <div className="flex items-center justify-center gap-2">
+                        {isAdmin && <Shield className="w-5 h-5 text-accent" />}
+                        <h1 className="text-2xl font-bold text-foreground">
+                          {getUserName()}
+                        </h1>
+                      </div>
+                      <p className="text-sm text-muted-foreground break-words">
+                        {user.email}
+                      </p>
+                    </div>
+
+                    {/* Edit Profile Button */}
+                    <Button
+                      onClick={() => setIsEditingProfile(true)}
+                      className="w-full bg-blue-500 hover:bg-blue-600"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit Profile
+                    </Button>
+
+                    {/* Stats */}
                 <div className="w-full space-y-3 pt-4 border-t border-white/10">
                   <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all">
                     <div className="flex items-center gap-3">
@@ -257,6 +400,8 @@ export function ProfileContent({ user, events, clubs, registrations }: ProfileCo
                     <span className="text-xl font-bold text-purple-400">{stats.clubsOwned + stats.clubsJoined}</span>
                   </div>
                 </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

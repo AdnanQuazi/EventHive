@@ -222,7 +222,7 @@ export function ExploreEvents({
             <Calendar className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
             <h3 className="text-2xl font-bold mb-2">No events found</h3>
             <p className="text-muted-foreground mb-6">
-              Try adjusting your filters to find events you're interested in
+              Try adjusting your filters to find events you&apos;re interested in
             </p>
             {hasActiveFilters && (
               <Button onClick={clearFilters} variant="outline" className="rounded-xl">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Trash2, Edit2, X } from "lucide-react";
+import { Trash2, Edit2, X, MoreHorizontal } from "lucide-react";
 import {
   deleteClubMessage,
   editClubMessage,
@@ -11,6 +11,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 interface ChatBubbleProps {
@@ -18,6 +24,10 @@ interface ChatBubbleProps {
   clubId: string;
   isOwnMessage: boolean;
   isClubOwner: boolean;
+  currentUserProfile?: {
+    name: string;
+    avatar_url: string | null;
+  };
   onMessageUpdated?: () => void;
 }
 
@@ -26,6 +36,7 @@ export function ChatBubble({
   clubId,
   isOwnMessage,
   isClubOwner,
+  currentUserProfile,
   onMessageUpdated,
 }: ChatBubbleProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -79,11 +90,15 @@ export function ChatBubble({
     }
   };
 
-  const userInitials = (message.user.name || message.user.email || "U")
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
+  const displayName = isOwnMessage
+    ? "You"
+    : (message.user_profile?.name || "Member");
+  const userInitials = isOwnMessage
+    ? (currentUserProfile?.name?.charAt(0)?.toUpperCase() || "Y")
+    : (message.user_profile?.name?.charAt(0)?.toUpperCase() || "M");
+  const avatarUrl = isOwnMessage
+    ? currentUserProfile?.avatar_url
+    : message.user_profile?.avatar_url;
 
   return (
     <div
@@ -93,7 +108,7 @@ export function ChatBubble({
     >
       {!isOwnMessage && (
         <Avatar className="h-8 w-8 flex-shrink-0">
-          <AvatarImage src={message.user.avatar_url || undefined} />
+          <AvatarImage src={avatarUrl || undefined} />
           <AvatarFallback>{userInitials}</AvatarFallback>
         </Avatar>
       )}
@@ -101,7 +116,7 @@ export function ChatBubble({
       <div className={`flex flex-col ${ isOwnMessage ? "items-end" : "items-start" }`}>
         {!isOwnMessage && (
           <span className="text-xs font-semibold text-gray-500 mb-1">
-            {message.user.name || message.user.email}
+            {displayName}
           </span>
         )}
 
@@ -140,7 +155,7 @@ export function ChatBubble({
             </div>
           </div>
         ) : (
-          <>
+          <div className="group relative">
             <div
               className={`px-3 py-2 rounded-lg max-w-md break-words ${
                 isOwnMessage
@@ -165,36 +180,47 @@ export function ChatBubble({
             </span>
 
             {(canEdit || canDelete) && (
-              <div className="flex gap-1 mt-1 opacity-0 hover:opacity-100 transition-opacity">
-                {canEdit && (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    disabled={isDeletingOrEditing}
-                    className="p-1 hover:bg-gray-300 rounded text-gray-600 hover:text-gray-800"
-                    title="Edit message"
-                  >
-                    <Edit2 className="h-3 w-3" />
-                  </button>
-                )}
-                {canDelete && (
-                  <button
-                    onClick={handleDelete}
-                    disabled={isDeletingOrEditing}
-                    className="p-1 hover:bg-red-200 rounded text-red-600 hover:text-red-800"
-                    title="Delete message"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                )}
+              <div className={`absolute top-0 ${
+                isOwnMessage ? "left-0" : "right-0"
+              } opacity-0 group-hover:opacity-100 transition-opacity`}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-1 hover:bg-gray-300 rounded-full text-gray-600 hover:text-gray-800 transition-colors">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={isOwnMessage ? "start" : "end"}>
+                    {canEdit && (
+                      <DropdownMenuItem
+                        onClick={() => setIsEditing(true)}
+                        disabled={isDeletingOrEditing}
+                        className="cursor-pointer"
+                      >
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                    )}
+                    {canDelete && (
+                      <DropdownMenuItem
+                        onClick={handleDelete}
+                        disabled={isDeletingOrEditing}
+                        className="cursor-pointer text-red-600 focus:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
       {isOwnMessage && (
         <Avatar className="h-8 w-8 flex-shrink-0">
-          <AvatarImage src={message.user.avatar_url || undefined} />
+          <AvatarImage src={undefined} />
           <AvatarFallback>{userInitials}</AvatarFallback>
         </Avatar>
       )}
