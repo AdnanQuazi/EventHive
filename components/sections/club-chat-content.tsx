@@ -30,13 +30,21 @@ export function ClubChatContent({
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState<{
+    name: string;
+    avatar_url: string | null;
+  } | undefined>();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [justSent, setJustSent] = useState(false);
 
   // Load initial messages
   useEffect(() => {
     loadMessages();
   }, [clubId]);
+
+  // Load current user profile
+  useEffect(() => {
+    loadCurrentUserProfile();
+  }, []);
 
   // Subscribe to real-time messages
   useEffect(() => {
@@ -53,15 +61,9 @@ export function ClubChatContent({
           filter: `club_id=eq.${clubId}`,
         },
         (payload) => {
-          if (payload.eventType === "INSERT") {
-            // Only reload if we didn't just send this
-            if (!justSent) {
-              loadMessages();
-            }
-            setJustSent(false);
-          } else if (payload.eventType === "UPDATE" || payload.eventType === "DELETE") {
-            loadMessages();
-          }
+          console.log("Real-time event:", payload.eventType, payload);
+          // Reload messages to ensure we have the latest state
+          loadMessages();
         }
       )
       .subscribe();
@@ -69,7 +71,7 @@ export function ClubChatContent({
     return () => {
       channel.unsubscribe();
     };
-  }, [clubId, justSent]);
+  }, [clubId]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -93,13 +95,31 @@ export function ClubChatContent({
     }
   };
 
+  const loadCurrentUserProfile = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+
+      if (error || !user) {
+        console.error("Failed to get current user:", error);
+        return;
+      }
+
+      setCurrentUserProfile({
+        name: user.user_metadata?.name || user.email || "You",
+        avatar_url: user.user_metadata?.avatar_url || null,
+      });
+    } catch (error) {
+      console.error("Error loading current user profile:", error);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim()) {
       return;
     }
 
     setIsSending(true);
-    setJustSent(true);
     const messageToSend = newMessage;
     setNewMessage("");
 
@@ -110,25 +130,22 @@ export function ClubChatContent({
         setNewMessage(messageToSend); // Restore message on error
       } else {
         toast.success("Message sent");
-        // Add optimistic message
+        // Optimistically add the message to the local state
         if (result.data) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              ...result.data,
-              user: {
-                id: userId,
-                email: null,
-                name: "You",
-                avatar_url: null,
-              },
-            } as MessageWithUser,
-          ]);
+          const optimisticMessage: MessageWithUser = {
+            ...result.data,
+            user_profile: currentUserProfile ? {
+              name: currentUserProfile.name,
+              avatar_url: currentUserProfile.avatar_url,
+            } : undefined,
+          };
+          setMessages(prev => [...prev, optimisticMessage]);
         }
-        // Load messages after a short delay to get the full data with user info
+
+        // Fallback: reload messages after a short delay in case real-time doesn't work
         setTimeout(() => {
           loadMessages();
-        }, 500);
+        }, 2000);
       }
     } catch (error) {
       toast.error("Failed to send message");
@@ -178,6 +195,7 @@ export function ClubChatContent({
                   clubId={clubId}
                   isOwnMessage={message.user_id === userId}
                   isClubOwner={userId === clubOwnerId}
+                  currentUserProfile={currentUserProfile}
                   onMessageUpdated={loadMessages}
                 />
               ))}
