@@ -180,8 +180,36 @@ export async function getClubMessages(
 }
 
 /**
- * Delete a message (only by sender or club owner)
+ * Get user profile by ID (for real-time updates)
  */
+export async function getUserProfile(userId: string): Promise<{
+  name: string;
+  avatar_url: string | null;
+}> {
+  try {
+    const adminSupabase = createAdminClient();
+
+    const { data: userData, error } = await adminSupabase.auth.admin.getUserById(userId);
+
+    if (error || !userData.user) {
+      return {
+        name: "Unknown User",
+        avatar_url: null,
+      };
+    }
+
+    return {
+      name: userData.user.user_metadata?.name || userData.user.email || "Unknown User",
+      avatar_url: userData.user.user_metadata?.avatar_url || null,
+    };
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    return {
+      name: "Unknown User",
+      avatar_url: null,
+    };
+  }
+}
 export async function deleteClubMessage(
   messageId: string,
   clubId: string

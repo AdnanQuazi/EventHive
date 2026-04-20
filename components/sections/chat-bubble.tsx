@@ -28,7 +28,6 @@ interface ChatBubbleProps {
     name: string;
     avatar_url: string | null;
   };
-  onMessageUpdated?: () => void;
 }
 
 export function ChatBubble({
@@ -37,7 +36,6 @@ export function ChatBubble({
   isOwnMessage,
   isClubOwner,
   currentUserProfile,
-  onMessageUpdated,
 }: ChatBubbleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(message.content);
@@ -54,7 +52,7 @@ export function ChatBubble({
         toast.error(result.error);
       } else {
         toast.success("Message deleted");
-        onMessageUpdated?.();
+        // Real-time subscription will handle the deletion
       }
     } catch (error) {
       toast.error("Failed to delete message");
@@ -81,7 +79,7 @@ export function ChatBubble({
       } else {
         toast.success("Message updated");
         setIsEditing(false);
-        onMessageUpdated?.();
+        // Real-time subscription will handle the update
       }
     } catch (error) {
       toast.error("Failed to edit message");

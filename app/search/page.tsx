@@ -51,6 +51,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           initialCity={city}
           initialType={type}
           availableCities={cities}
+          initialShowUpcoming={false}
         />
       </main>
     </>
