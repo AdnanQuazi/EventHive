@@ -28,11 +28,18 @@ Run the SQL migration in your Supabase project:
 1. Copy the contents from `migrations/add_club_messages_rls.sql`
 2. Execute this query to add the security policies
 
+**Enable Real-time for live chat (IMPORTANT for real-time updates):**
+
+1. Copy the contents from `migrations/enable_realtime_club_messages.sql`
+2. Execute this query to enable REPLICA IDENTITY and add update triggers
+
 This will create:
 - `club_messages` table with proper structure
 - RLS (Row Level Security) policies for data access
 - Indices for performance optimization
 - Relationships to `clubs` and `auth.users` tables
+- REPLICA IDENTITY FULL (required for Supabase real-time subscriptions)
+- Auto-update trigger for `updated_at` column
 
 ### 2. File Structure
 New files added:

@@ -9,7 +9,9 @@ import { Loader2, Send } from "lucide-react";
 import {
   getClubMessages,
   sendClubMessage,
+  getUserProfile,
   type MessageWithUser,
+  type ClubMessage,
 } from "@/lib/actions/club-messages";
 import { ChatBubble } from "@/components/sections/chat-bubble";
 import { toast } from "sonner";
@@ -36,10 +38,49 @@ export function ClubChatContent({
   } | undefined>();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const [lastMessageCount, setLastMessageCount] = useState(0);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
+
   // Load initial messages
   useEffect(() => {
     loadMessages();
   }, [clubId]);
+
+  // Auto-fetch fallback if real-time seems stuck
+  useEffect(() => {
+    // Check if messages are being updated via real-time
+    // If not, use fallback polling
+    const checkAndPoll = () => {
+      if (lastMessageCount === messages.length && messages.length > 0) {
+        // Message count hasn't changed, might be stuck - enable polling
+        console.warn("Real-time seems stuck, enabling fallback polling");
+        if (!pollIntervalRef.current) {
+          pollIntervalRef.current = setInterval(() => {
+            loadMessages();
+          }, 1500);
+        }
+      } else {
+        // Real-time is working, disable polling
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+      }
+      setLastMessageCount(messages.length);
+    };
+
+    const timer = setTimeout(checkAndPoll, 3000);
+    return () => clearTimeout(timer);
+  }, [messages, lastMessageCount]);
 
   // Load current user profile
   useEffect(() => {
@@ -50,26 +91,103 @@ export function ClubChatContent({
   useEffect(() => {
     const supabase = createClient();
 
-    const channel = supabase
-      .channel(`club-messages-${clubId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "club_messages",
-          filter: `club_id=eq.${clubId}`,
-        },
-        (payload) => {
-          console.log("Real-time event:", payload.eventType, payload);
-          // Reload messages to ensure we have the latest state
-          loadMessages();
-        }
-      )
-      .subscribe();
+    const subscribeToMessages = async () => {
+      const channel = supabase
+        .channel(`club-messages-${clubId}`, {
+          config: {
+            broadcast: { self: true },
+          },
+        })
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "club_messages",
+            filter: `club_id=eq.${clubId}`,
+          },
+          async (payload) => {
+            console.log("Real-time INSERT event:", payload);
+            const newMessage = payload.new as ClubMessage;
+
+            setMessages(prev => {
+              // Check if message already exists
+              if (prev.some(msg => msg.id === newMessage.id)) {
+                return prev;
+              }
+              return prev;
+            });
+
+            // Fetch profile and add message
+            try {
+              const userProfile = await fetchUserProfile(newMessage.user_id);
+              const messageWithUser: MessageWithUser = {
+                ...newMessage,
+                user_profile: userProfile,
+              };
+              setMessages(prev => {
+                if (prev.some(msg => msg.id === newMessage.id)) {
+                  return prev;
+                }
+                return [...prev, messageWithUser];
+              });
+            } catch (error) {
+              console.error("Error adding message:", error);
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "club_messages",
+            filter: `club_id=eq.${clubId}`,
+          },
+          (payload) => {
+            console.log("Real-time UPDATE event:", payload);
+            const updatedMessage = payload.new as ClubMessage;
+            setMessages(prev =>
+              prev.map(msg =>
+                msg.id === updatedMessage.id ? { ...msg, ...updatedMessage } : msg
+              )
+            );
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "club_messages",
+            filter: `club_id=eq.${clubId}`,
+          },
+          (payload) => {
+            console.log("Real-time DELETE event:", payload);
+            const deletedMessage = payload.old as ClubMessage;
+            setMessages(prev => prev.filter(msg => msg.id !== deletedMessage.id));
+          }
+        )
+        .subscribe((status) => {
+          console.log("Subscription status:", status);
+          if (status === "CHANNEL_ERROR") {
+            console.error("Channel error - retrying subscription");
+          }
+        });
+
+      return channel;
+    };
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    subscribeToMessages().then(ch => {
+      channel = ch;
+    });
 
     return () => {
-      channel.unsubscribe();
+      if (channel) {
+        channel.unsubscribe();
+      }
     };
   }, [clubId]);
 
@@ -114,6 +232,18 @@ export function ClubChatContent({
     }
   };
 
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      return await getUserProfile(userId);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      return {
+        name: "Unknown User",
+        avatar_url: null,
+      };
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim()) {
       return;
@@ -128,24 +258,19 @@ export function ClubChatContent({
       if (result.error) {
         toast.error(result.error);
         setNewMessage(messageToSend); // Restore message on error
-      } else {
+      } else if (result.data) {
+        // Immediately add the message to the UI
+        const messageWithUser: MessageWithUser = {
+          ...result.data,
+          user_profile: currentUserProfile,
+        };
+        setMessages(prev => [...prev, messageWithUser]);
         toast.success("Message sent");
-        // Optimistically add the message to the local state
-        if (result.data) {
-          const optimisticMessage: MessageWithUser = {
-            ...result.data,
-            user_profile: currentUserProfile ? {
-              name: currentUserProfile.name,
-              avatar_url: currentUserProfile.avatar_url,
-            } : undefined,
-          };
-          setMessages(prev => [...prev, optimisticMessage]);
-        }
-
-        // Fallback: reload messages after a short delay in case real-time doesn't work
+        
+        // Refetch after a short delay to catch any messages from others
         setTimeout(() => {
           loadMessages();
-        }, 2000);
+        }, 1000);
       }
     } catch (error) {
       toast.error("Failed to send message");
@@ -196,7 +321,6 @@ export function ClubChatContent({
                   isOwnMessage={message.user_id === userId}
                   isClubOwner={userId === clubOwnerId}
                   currentUserProfile={currentUserProfile}
-                  onMessageUpdated={loadMessages}
                 />
               ))}
             </div>

@@ -14,8 +14,10 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
   const params = await searchParams;
   const { category, city, type } = params;
 
-  // Fetch all public events
-  const eventsResult = await getPublicEvents();
+  // Fetch all public events (upcoming by default)
+  const eventsResult = await getPublicEvents({
+    startDateFrom: new Date().toISOString(),
+  });
   const citiesResult = await getEventCities();
 
   const events = eventsResult.data || [];
@@ -36,6 +38,7 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
           initialCategory={category}
           initialCity={city}
           initialType={type}
+          initialShowUpcoming={true}
         />
       </main>
     </>

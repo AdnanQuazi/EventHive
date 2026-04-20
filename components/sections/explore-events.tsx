@@ -41,6 +41,7 @@ interface ExploreEventsProps {
   initialCategory?: string;
   initialCity?: string;
   initialType?: "online" | "offline";
+  initialShowUpcoming?: boolean;
 }
 
 export function ExploreEvents({
@@ -49,19 +50,22 @@ export function ExploreEvents({
   initialCategory,
   initialCity,
   initialType,
+  initialShowUpcoming = true,
 }: ExploreEventsProps) {
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || "all");
   const [selectedCity, setSelectedCity] = useState(initialCity || "all");
   const [selectedType, setSelectedType] = useState<string>(initialType || "all");
   const [sortBy, setSortBy] = useState<"latest" | "earliest" | "popular">("latest");
+  const [showUpcoming, setShowUpcoming] = useState(initialShowUpcoming);
 
   // Filter events locally
   let filteredEvents = initialEvents.filter((event) => {
     const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
     const matchesCity = selectedCity === "all" || event.city === selectedCity;
     const matchesType = selectedType === "all" || event.event_type === selectedType;
+    const matchesUpcoming = !showUpcoming || new Date(event.start_date) >= new Date();
     
-    return matchesCategory && matchesCity && matchesType;
+    return matchesCategory && matchesCity && matchesType && matchesUpcoming;
   });
 
   // Sort events
@@ -88,11 +92,20 @@ export function ExploreEvents({
     <div className="container mx-auto px-4 pt-32 pb-16 relative z-10 max-w-7xl">
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-4xl md:text-5xl font-bold mb-3">
-          {initialCategory ? `${initialCategory} Events` : "Explore Events"}
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-4xl md:text-5xl font-bold mb-3">
+            {initialCategory ? `${initialCategory} Events` : showUpcoming ? "Upcoming Events" : "All Events"}
+          </h1>
+          <Button
+            variant="outline"
+            onClick={() => setShowUpcoming(!showUpcoming)}
+            className="rounded-xl"
+          >
+            {showUpcoming ? "Show All Events" : "Show Upcoming Only"}
+          </Button>
+        </div>
         <p className="text-muted-foreground text-lg">
-          Discover all upcoming and past events. Found {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
+          Discover all {showUpcoming ? "upcoming" : ""} events. Found {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
         </p>
       </div>
 

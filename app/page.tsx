@@ -10,8 +10,11 @@ import { Footer } from "@/components/sections/footer"
 import { getPublicEvents } from "@/lib/actions/events"
 
 export default async function LandingPage() {
-  // Fetch recent events from database
-  const eventsResult = await getPublicEvents({ limit: 8 });
+  // Fetch recent upcoming events from database
+  const eventsResult = await getPublicEvents({ 
+    limit: 8,
+    startDateFrom: new Date().toISOString(),
+  });
   const events = eventsResult.data || [];
   return (
     <main className="min-h-screen bg-gray-100 text-foreground font-sans relative overflow-hidden">

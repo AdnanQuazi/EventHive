@@ -43,6 +43,7 @@ interface SearchResultsProps {
   initialCity?: string;
   initialType?: "online" | "offline";
   availableCities: string[];
+  initialShowUpcoming?: boolean;
 }
 
 export function SearchResults({
@@ -52,6 +53,7 @@ export function SearchResults({
   initialCity,
   initialType,
   availableCities,
+  initialShowUpcoming = false,
 }: SearchResultsProps) {
   const router = useRouter();
   
@@ -59,14 +61,16 @@ export function SearchResults({
   const [selectedCity, setSelectedCity] = useState(initialCity || "all");
   const [selectedType, setSelectedType] = useState<string>(initialType || "all");
   const [sortBy, setSortBy] = useState<"latest" | "earliest" | "popular">("latest");
+  const [showUpcoming, setShowUpcoming] = useState(initialShowUpcoming);
 
   // Filter events locally for instant feedback
   let filteredEvents = initialEvents.filter((event) => {
     const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
     const matchesCity = selectedCity === "all" || event.city === selectedCity;
     const matchesType = selectedType === "all" || event.event_type === selectedType;
+    const matchesUpcoming = !showUpcoming || new Date(event.start_date) >= new Date();
     
-    return matchesCategory && matchesCity && matchesType;
+    return matchesCategory && matchesCity && matchesType && matchesUpcoming;
   });
 
   // Sort events
@@ -106,27 +110,38 @@ export function SearchResults({
   return (
     <div className="container mx-auto px-4 pt-32 pb-16 relative z-10 max-w-7xl">
       {/* Search Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold mb-2">
-            {initialQuery ? `Search results for "${initialQuery}"` : "Explore Events"}
-          </h1>
-          <p className="text-muted-foreground">
-            Found {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <div className="w-48">
-          <label className="text-sm font-medium block mb-2">Sort by</label>
-          <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-            <SelectTrigger className="bg-white/10 border-white/20 rounded-xl">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-background border-border rounded-2xl">
-              <SelectItem value="latest">Latest First</SelectItem>
-              <SelectItem value="earliest">Earliest First</SelectItem>
-              <SelectItem value="popular">Most Popular</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">
+              {initialQuery ? `Search results for "${initialQuery}"` : "Explore Events"}
+            </h1>
+            <p className="text-muted-foreground">
+              Found {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <div className="flex gap-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowUpcoming(!showUpcoming)}
+              className="rounded-xl"
+            >
+              {showUpcoming ? "Show All Events" : "Show Upcoming Only"}
+            </Button>
+            <div className="w-48">
+              <label className="text-sm font-medium block mb-2">Sort by</label>
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger className="bg-white/10 border-white/20 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-background border-border rounded-2xl">
+                  <SelectItem value="latest">Latest First</SelectItem>
+                  <SelectItem value="earliest">Earliest First</SelectItem>
+                  <SelectItem value="popular">Most Popular</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
       </div>
 
